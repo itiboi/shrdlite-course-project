@@ -119,7 +119,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
 
              // Check all now available properties
             var object = state.objects[name];
-            var checking = (attr) =>
+            var checking = (attr: string) =>
                 (rootObject[attr] !== undefined && rootObject[attr] !== object[attr]);
 
             if (checking("size") && checking("form") && checking("color")){
@@ -138,7 +138,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         return interpretation;
     }
 
-    function filterCandidate (entity: Entity, objects: WorldState.objects) {
+    function filterCandidate(entity: Parser.Entity, objects: { [s:string]: ObjectDefinition; }) {
 
     }
 
