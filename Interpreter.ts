@@ -108,23 +108,11 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
         // Search for main object
         var rootEntity: Parser.Entity = cmd.entity;
-        var rootObject: Parser.Object = rootEntity.object;
+        var objCandidates: string[] = filterCandidate(rootEntity, state.objects);
 
-        var objCandidates: string[];
-        for (var name in state.objects) {
-            // Ugly but:http://stackoverflow.com/questions/684672/loop-through-javascript-object
-            if (!state.objects.hasOwnProperty(name)) {
-                continue;
-            }
-
-             // Check all now available properties
-            var object = state.objects[name];
-            var checking = (attr: string) =>
-                (rootObject[attr] !== undefined && rootObject[attr] !== object[attr]);
-
-            if (checking("size") && checking("form") && checking("color")){
-              objCandidates.push(name);
-            }
+        console.log("Found candidates: " + objCandidates.length);
+        for(var obj of objCandidates) {
+            console.log(obj);
         }
 
         // This returns a dummy interpretation involving two random objects in the world
@@ -138,8 +126,28 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         return interpretation;
     }
 
-    function filterCandidate(entity: Parser.Entity, objects: { [s:string]: ObjectDefinition; }) {
+    function filterCandidate(entity: Parser.Entity, objects: { [s:string]: ObjectDefinition; }): string[] {
+        var rootObject: Parser.Object = entity.object;
+        var objCandidates: string[] = [];
 
+        console.log("Searching: " + rootObject["size"] + ", " + rootObject["form"] + ", " + rootObject["color"]);
+        for (var name in objects) {
+            // Ugly but: http://stackoverflow.com/questions/684672/loop-through-javascript-object
+            if (!objects.hasOwnProperty(name)) {
+                continue;
+            }
+
+            // Check all now available properties
+            var object = objects[name];
+            console.log("Possible: " + name + ", " + object["size"] + ", " + object["form"] + ", " + object["color"]);
+            if ((rootObject["form"] == "anyform" || rootObject["form"] == object["form"]) &&
+                (rootObject["size"] == null || rootObject["size"] == object["size"]) &&
+                (rootObject["color"] == null || rootObject["color"] == object["color"])) {
+                objCandidates.push(name);
+            }
+        }
+
+        return objCandidates;
     }
 
 }
