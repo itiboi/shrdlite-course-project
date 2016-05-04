@@ -92,6 +92,29 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         return (lit.polarity ? "" : "-") + lit.relation + "(" + lit.args.join(",") + ")";
     }
 
+    /**
+     * Internal representation for available objects in WorldState.
+     */
+    class FoundObject {
+        held: boolean;
+        // -1 if held==true
+        stackId: number;
+        // -1 if held==true
+        stackLocation: number;
+        definition: ObjectDefinition;
+
+        constructor(definition: ObjectDefinition, held: boolean, stackId: number, stackLoc: number) {
+            this.held = held;
+            this.definition = definition;
+            this.stackId = stackId;
+            this.stackLocation = stackLoc;
+        }
+    }
+
+    interface ObjectDict {
+        [s: string]: FoundObject;
+    }
+
     //////////////////////////////////////////////////////////////////////
     // private functions
     /**
@@ -106,14 +129,25 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
      * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
      */
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
+        // TODO: Extension for 'all' quantifier (small)
+
+        // Filter out objects which don't exist in world state
+        var existingObjects: ObjectDict = filterExistingObjects(state);
+
         // Search for main object
         var rootEntity: Parser.Entity = cmd.entity;
-        var objCandidates: string[] = filterCandidate(rootEntity, state.objects);
+        var objCandidates: string[] = filterCandidate(rootEntity, existingObjects);
 
         console.log("Found candidates: " + objCandidates.length);
         for(var obj of objCandidates) {
             console.log(obj);
         }
+
+        // TODO: Find candidates for every entity mentioned in command
+
+        // TODO: Build up a relation structure for all objects
+
+        // TODO: Perform arc consistency
 
         // This returns a dummy interpretation involving two random objects in the world
         var objects : string[] = Array.prototype.concat.apply([], state.stacks);
@@ -126,7 +160,37 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         return interpretation;
     }
 
-    function filterCandidate(entity: Parser.Entity, objects: { [s:string]: ObjectDefinition; }): string[] {
+    /**
+     * Filters out all objects which don't exist in world state.
+     */
+    function filterExistingObjects(state: WorldState) : ObjectDict {
+        var existingObjects: ObjectDict = {};
+        for (var name in state.objects) {
+              // Ugly but: http://stackoverflow.com/questions/684672/loop-through-javascript-object
+            if (!state.objects.hasOwnProperty(name)) {
+                continue;
+            }
+
+            var definition: ObjectDefinition = state.objects[name];
+            // Check whether name exists on stacks or is held
+            if(state.holding == name) {
+                existingObjects[name] = new FoundObject(definition, true, -1, -1);
+                continue;
+            }
+
+            for (var i = 0; i < state.stacks.length; i++) {
+                var stack = state.stacks[i];
+                var loc = stack.indexOf(name)
+                if (stack.indexOf(name) > -1) {
+                    existingObjects[name] = new FoundObject(definition, false, i, loc);
+                    continue;
+                }
+            }
+        }
+        return existingObjects;
+    }
+
+    function filterCandidate(entity: Parser.Entity, objects: ObjectDict): string[] {
         var rootObject: Parser.Object = entity.object;
         var objCandidates: string[] = [];
 
@@ -139,10 +203,11 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
 
             // Check all now available properties
             var object = objects[name];
-            console.log("Possible: " + name + ", " + object["size"] + ", " + object["form"] + ", " + object["color"]);
-            if ((rootObject["form"] == "anyform" || rootObject["form"] == object["form"]) &&
-                (rootObject["size"] == null || rootObject["size"] == object["size"]) &&
-                (rootObject["color"] == null || rootObject["color"] == object["color"])) {
+            var def = object.definition;
+            console.log("Possible: " + name + ", " + def["size"] + ", " + def["form"] + ", " + def["color"]);
+            if ((rootObject["form"] == "anyform" || rootObject["form"] == def["form"]) &&
+                (rootObject["size"] == null || rootObject["size"] == def["size"]) &&
+                (rootObject["color"] == null || rootObject["color"] == def["color"])) {
                 objCandidates.push(name);
             }
         }
