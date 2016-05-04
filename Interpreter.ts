@@ -190,9 +190,16 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         return existingObjects;
     }
 
+    /**
+     * Find all candidates for given entity.
+     */
     function filterCandidate(entity: Parser.Entity, objects: ObjectDict): string[] {
-        var rootObject: Parser.Object = entity.object;
         var objCandidates: string[] = [];
+        var rootObject: Parser.Object = entity.object;
+        if (rootObject.object != undefined) {
+            rootObject = rootObject.object;
+            console.log(rootObject, " is leaf.");
+        }
 
         console.log("Searching: " + rootObject["size"] + ", " + rootObject["form"] + ", " + rootObject["color"]);
         for (var name in objects) {
