@@ -162,6 +162,8 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
 
     /**
      * Filters out all objects which don't exist in world state.
+     * The property objects of WorldState interface map all the possible indentifier of objects.
+     * Even the one that are not currenlty in the given world.
      */
     function filterExistingObjects(state: WorldState) : ObjectDict {
         var existingObjects: ObjectDict = {};
@@ -198,11 +200,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         }
 
         console.log("Searching: " + rootObject["size"] + ", " + rootObject["form"] + ", " + rootObject["color"]);
-        for (var name in objects) {
-            // Ugly but: http://stackoverflow.com/questions/684672/loop-through-javascript-object
-            if (!objects.hasOwnProperty(name)) {
-                continue;
-            }
+        for (var name in Object.keys(objects)) {
 
             // Check all now available properties
             var object = objects[name];
