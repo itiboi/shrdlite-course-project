@@ -165,11 +165,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
      */
     function filterExistingObjects(state: WorldState) : ObjectDict {
         var existingObjects: ObjectDict = {};
-        for (var name in state.objects) {
-              // Ugly but: http://stackoverflow.com/questions/684672/loop-through-javascript-object
-            if (!state.objects.hasOwnProperty(name)) {
-                continue;
-            }
+        for (var name of Object.keys(state.objects)) {
 
             var definition: ObjectDefinition = state.objects[name];
             // Check whether name exists on stacks or is held
