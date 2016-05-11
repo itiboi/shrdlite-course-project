@@ -110,19 +110,22 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
             this.stackLocation = stackLoc;
         }
     }
+
+    interface ObjectDict {
+        [s: string]: FoundObject;
+    }
+
+    /**
+     * Nested class to retrieve all the objects describing an object and its location
+     * TODO: save the relationship between the nested object. (i.e inside, ontop ...)
+     */
     class Candidates {
-      // Nested class to retrieve all the objects describing an object and its location
-      // TODO: save the relationship between the nested object. (i.e inside, ontop ...)
       main: string[]
       nested: Candidates
       constructor(main: string[], nested: Candidates){
         this.main = main;
         this.nested = nested;
       }
-    }
-
-    interface ObjectDict {
-        [s: string]: FoundObject;
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -144,19 +147,13 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         // Filter out objects which don't exist in world state
         var existingObjects: ObjectDict = filterExistingObjects(state);
 
-        // Search for main object
-        var rootEntity: Parser.Entity = cmd.entity;
-        var filterCandidateResult: Candidates = filterCandidate(rootEntity, existingObjects);
-        var objCandidates: string[] = filterCandidateResult.main;
-        // You can retrieve all the nested object describing the location from nestedCandidates
-        var nestedCandidates: Candidates = filterCandidateResult.nested;
-        console.log("Found candidates: " + objCandidates.length);
-        console.log("Found nested candidates: " + nestedCandidates.main);
-        for(var obj of objCandidates) {
-            console.log(obj);
-        }
+        // Search for main Candidates
+        var mainCandidates: Candidates = searchForCandidates(cmd.entity,existingObjects);
+        // Search for location Candidates
+        var goalLocationCandidates: Candidates = searchForCandidates(cmd.location.entity,existingObjects);
 
-        // TODO: Find candidates for every entity mentioned in command
+
+        //  TODO: Find candidates for every entity mentioned in command
 
         // TODO: Build up a relation structure for all objects
 
@@ -171,6 +168,23 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
             {polarity: true, relation: "holding", args: [b]}
         ]];
         return interpretation;
+    }
+    /**
+     * Search for candidates object
+     */
+    function searchForCandidates (rootEntity : Parser.Entity, existingObjects: ObjectDict) : Candidates {
+      var rootCandidates: Candidates = filterCandidate(rootEntity, existingObjects);
+      var mainCandidates: string[] = rootCandidates.main;
+      // You can retrieve all the nested object describing the location from nestedCandidates
+      var nestedCandidates: Candidates = rootCandidates.nested;
+      if (nestedCandidates !== undefined){
+        console.log("Found nested candidates: " + nestedCandidates.main);
+      }
+      console.log("Found candidates: " + mainCandidates.length);
+      for(var obj of mainCandidates) {
+          console.log(obj);
+      }
+      return rootCandidates;
     }
 
     /**
