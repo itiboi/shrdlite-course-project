@@ -110,6 +110,15 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
             this.stackLocation = stackLoc;
         }
     }
+    class Candidates {
+      // Nested class to retrieve all the objects describing an object and its location
+      main: string[]
+      nested: Candidates
+      constructor(main: string[], nested: Candidates){
+        this.main = main;
+        this.nested = nested;
+      }
+    }
 
     interface ObjectDict {
         [s: string]: FoundObject;
@@ -136,9 +145,14 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
 
         // Search for main object
         var rootEntity: Parser.Entity = cmd.entity;
-        var objCandidates: string[] = filterCandidate(rootEntity, existingObjects);
-
+        var filterCandidateResult: Candidates = filterCandidate(rootEntity, existingObjects);
+        var objCandidates: string[] = filterCandidateResult.main;
+        // You can retrieve all the nested object describing the location from nestedCandidates
+        var nestedCandidates: Candidates = filterCandidateResult.nested;
         console.log("Found candidates: " + objCandidates.length);
+        console.log("Found nested candidates: " + nestedCandidates.main);
+        console.log("Nested nested candidates: " + nestedCandidates.nested);
+
         for(var obj of objCandidates) {
             console.log(obj);
         }
@@ -191,16 +205,20 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
     /**
      * Find all candidates for given entity.
      */
-    function filterCandidate(entity: Parser.Entity, objects: ObjectDict): string[] {
+    function filterCandidate(entity: Parser.Entity, objects: ObjectDict): Candidates {
         var objCandidates: string[] = [];
         var rootObject: Parser.Object = entity.object;
+        var nestedCandidates : Candidates = undefined;
         if (rootObject.object != undefined) {
+            var location : Parser.Location = rootObject.location;
+            var nestedCandidates = filterCandidate(location.entity,objects);
+            console.log("nested candidates",nestedCandidates);
             rootObject = rootObject.object;
             console.log(rootObject, " is leaf.");
         }
 
         console.log("Searching: " + rootObject["size"] + ", " + rootObject["form"] + ", " + rootObject["color"]);
-        for (var name in Object.keys(objects)) {
+        for (var name of Object.keys(objects)) {
 
             // Check all now available properties
             var object = objects[name];
@@ -213,7 +231,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
             }
         }
 
-        return objCandidates;
+        return new Candidates(objCandidates, nestedCandidates);
     }
 
 }
