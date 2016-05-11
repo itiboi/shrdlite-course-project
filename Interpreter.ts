@@ -112,6 +112,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
     }
     class Candidates {
       // Nested class to retrieve all the objects describing an object and its location
+      // TODO: save the relationship between the nested object. (i.e inside, ontop ...)
       main: string[]
       nested: Candidates
       constructor(main: string[], nested: Candidates){
@@ -151,8 +152,6 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         var nestedCandidates: Candidates = filterCandidateResult.nested;
         console.log("Found candidates: " + objCandidates.length);
         console.log("Found nested candidates: " + nestedCandidates.main);
-        console.log("Nested nested candidates: " + nestedCandidates.nested);
-
         for(var obj of objCandidates) {
             console.log(obj);
         }
@@ -210,8 +209,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         var rootObject: Parser.Object = entity.object;
         var nestedCandidates : Candidates = undefined;
         if (rootObject.object != undefined) {
-            var location : Parser.Location = rootObject.location;
-            var nestedCandidates = filterCandidate(location.entity,objects);
+            var nestedCandidates = filterCandidate(rootObject.location.entity,objects);
             console.log("nested candidates",nestedCandidates);
             rootObject = rootObject.object;
             console.log(rootObject, " is leaf.");
