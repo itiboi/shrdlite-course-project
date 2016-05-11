@@ -98,8 +98,12 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
     class FoundObject {
         held: boolean;
         // -1 if held==true
+        // in the realworld representation stackId==0
+        // means that you are on the left
         stackId: number;
         // -1 if held==true
+        // in the realworld representation stackId==0
+        // means that you are on the floor
         stackLocation: number;
         definition: ObjectDefinition;
 
@@ -120,10 +124,12 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
      * TODO: save the relationship between the nested object. (i.e inside, ontop ...)
      */
     class Candidates {
-      main: string[]
-      nested: Candidates
-      constructor(main: string[], nested: Candidates){
+      main: string[];
+      relation : string;
+      nested: Candidates;
+      constructor(main: string[], relation : string, nested: Candidates){
         this.main = main;
+        this.relation = relation;
         this.nested = nested;
       }
     }
@@ -146,11 +152,18 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
 
         // Filter out objects which don't exist in world state
         var existingObjects: ObjectDict = filterExistingObjects(state);
+        console.log(existingObjects,"existingObjects");
 
         // Search for main Candidates
         var mainCandidates: Candidates = searchForCandidates(cmd.entity,existingObjects);
+        // performArcConsistency
+        var res = performArcConsistency(mainCandidates,existingObjects);
+        console.log(res,"res");
         // Search for location Candidates
-        var goalLocationCandidates: Candidates = searchForCandidates(cmd.location.entity,existingObjects);
+        if (cmd.location !== undefined) {
+            var goalLocationCandidates: Candidates = searchForCandidates(cmd.location.entity,existingObjects);
+        }
+
 
 
         //  TODO: Find candidates for every entity mentioned in command
@@ -167,13 +180,21 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
             {polarity: true, relation: "ontop", args: [a, "floor"]},
             {polarity: true, relation: "holding", args: [b]}
         ]];
+
+        if (res !== undefined){
+          var interpretation : DNFFormula = [[
+              {polarity: true, relation: "ontop", args: ["m", "floor"]},
+              {polarity: true, relation: "holding", args: [res.main]}
+          ]];
+        }
         return interpretation;
     }
     /**
      * Search for candidates object
      */
-    function searchForCandidates (rootEntity : Parser.Entity, existingObjects: ObjectDict) : Candidates {
+    function searchForCandidates(rootEntity : Parser.Entity, existingObjects: ObjectDict) : Candidates {
       var rootCandidates: Candidates = filterCandidate(rootEntity, existingObjects);
+      console.log("rootCandidates", rootCandidates);
       var mainCandidates: string[] = rootCandidates.main;
       // You can retrieve all the nested object describing the location from nestedCandidates
       var nestedCandidates: Candidates = rootCandidates.nested;
@@ -186,6 +207,31 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
       }
       return rootCandidates;
     }
+
+    /**
+     * Search for candidates object
+     */
+    function performArcConsistency(candidates : Candidates, existingObjects: ObjectDict){
+      for (var candidate of candidates.main){
+        var foundObject : FoundObject = existingObjects[candidate];
+        if (candidates.nested !== undefined){
+          for (var nested of candidates.nested.main){
+            var nestedObject : FoundObject = existingObjects[nested];
+            if (candidates.relation == "inside" || candidates.relation == "ontop"){
+              if ((foundObject.stackId == nestedObject.stackId)
+                  && (foundObject.stackLocation - 1 == nestedObject.stackLocation)){
+                    // this is the right candidate pair.
+                    console.log("find the right candidate pair")
+                    return {main : candidate, nested : nested}
+
+                }
+            }
+          }
+        }
+      }
+      return undefined
+    }
+
 
     /**
      * Filters out all objects which don't exist in world state.
@@ -221,12 +267,13 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
     function filterCandidate(entity: Parser.Entity, objects: ObjectDict): Candidates {
         var objCandidates: string[] = [];
         var rootObject: Parser.Object = entity.object;
+        var relation : string = undefined;
         var nestedCandidates : Candidates = undefined;
         if (rootObject.object != undefined) {
+            relation = rootObject.location.relation;
             var nestedCandidates = filterCandidate(rootObject.location.entity,objects);
             console.log("nested candidates",nestedCandidates);
             rootObject = rootObject.object;
-            console.log(rootObject, " is leaf.");
         }
 
         console.log("Searching: " + rootObject["size"] + ", " + rootObject["form"] + ", " + rootObject["color"]);
@@ -243,7 +290,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
             }
         }
 
-        return new Candidates(objCandidates, nestedCandidates);
+        return new Candidates(objCandidates, relation, nestedCandidates);
     }
 
 }

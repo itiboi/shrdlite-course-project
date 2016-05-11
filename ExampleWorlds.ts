@@ -74,7 +74,7 @@ ExampleWorlds["medium"] = {
 };
 
 
-ExampleWorlds["small"] = { 
+ExampleWorlds["small"] = {
     "stacks": [["e"],["g","l"],[],["k","m","f"],[]],
     "holding": "a",
     "arm": 0,
@@ -104,7 +104,7 @@ ExampleWorlds["small"] = {
 };
 
 
-ExampleWorlds["impossible"] = { 
+ExampleWorlds["impossible"] = {
     "stacks": [["lbrick1","lball1","sbrick1"], [],
                ["lpyr1","lbox1","lplank2","sball2"], [],
                ["sbrick2","sbox1","spyr1","ltable1","sball1"]],
