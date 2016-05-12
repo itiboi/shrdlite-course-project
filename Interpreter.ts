@@ -156,20 +156,26 @@ module Interpreter {
         var existingObjects: ObjectDict = filterExistingObjects(state);
         console.log(existingObjects,"existingObjects");
         var mainCandidates: Candidates = filterCandidate(cmd.entity,existingObjects);
+        console.log("command",cmd.command);
 
-        switch (cmd.command) {
-          case "move":
+        switch(cmd.command){
+          case "move" :
+            console.log("move",cmd.command);
             if (cmd.location !== undefined) {
                 var goalLocationCandidates: Candidates = filterCandidate(cmd.location.entity,existingObjects);
                 interpretation = [[
-                    {polarity: true, relation: cmd.location.relation, args: [mainCandidates.main[0],goalLocationCandidates[0]]}
+                    {polarity: true, relation: cmd.location.relation, args: [mainCandidates.main[0],goalLocationCandidates.main[0]]}
                 ]];
             }
-          case "take":
+            break;
+          case "take" :
+            console.log("take",cmd.command);
             // handle ambiguity
             interpretation = [[
                 {polarity: true, relation: "holding", args: [mainCandidates.main[0]]}
             ]];
+            break;
+
         }
         // Search for main Candidates
         // performArcConsistency
