@@ -149,20 +149,32 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
      */
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
         // TODO: Extension for 'all' quantifier (small)
-
+        var interpretation : DNFFormula;
         // Filter out objects which don't exist in world state
         var existingObjects: ObjectDict = filterExistingObjects(state);
         console.log(existingObjects,"existingObjects");
+        var mainCandidates: Candidates = filterCandidate(cmd.entity,existingObjects);
 
-        // Search for main Candidates
-        var mainCandidates: Candidates = searchForCandidates(cmd.entity,existingObjects);
-        // performArcConsistency
-        var res = performArcConsistency(mainCandidates,existingObjects);
-        console.log(res,"res");
-        // Search for location Candidates
-        if (cmd.location !== undefined) {
-            var goalLocationCandidates: Candidates = searchForCandidates(cmd.location.entity,existingObjects);
+        switch (cmd.command) {
+          case "move":
+            if (cmd.location !== undefined) {
+                var goalLocationCandidates: Candidates = filterCandidate(cmd.location.entity,existingObjects);
+                interpretation = [[
+                    {polarity: true, relation: cmd.location.relation, args: [mainCandidates.main[0],goalLocationCandidates[0]]}
+                ]];
+            }
+          case "take":
+            // handle ambiguity
+            interpretation = [[
+                {polarity: true, relation: "holding", args: [mainCandidates.main[0]]}
+            ]];
         }
+        // Search for main Candidates
+        // performArcConsistency
+        // var res = performArcConsistency(mainCandidates,existingObjects);
+        // console.log(res,"res");
+        // Search for location Candidates
+
 
 
 
@@ -173,82 +185,60 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         // TODO: Perform arc consistency
 
         // This returns a dummy interpretation involving two random objects in the world
-        var objects : string[] = Array.prototype.concat.apply([], state.stacks);
-        var a : string = objects[Math.floor(Math.random() * objects.length)];
-        var b : string = objects[Math.floor(Math.random() * objects.length)];
-        var interpretation : DNFFormula = [[
-            {polarity: true, relation: "ontop", args: [a, "floor"]},
-            {polarity: true, relation: "holding", args: [b]}
-        ]];
-
-        if (res !== undefined){
-          var interpretation : DNFFormula = [[
-              {polarity: true, relation: "ontop", args: ["m", "floor"]},
-              {polarity: true, relation: "holding", args: [res.main]}
-          ]];
-        }
+        // var objects : string[] = Array.prototype.concat.apply([], state.stacks);
+        // var a : string = objects[Math.floor(Math.random() * objects.length)];
+        // var b : string = objects[Math.floor(Math.random() * objects.length)];
+        // var interpretation : DNFFormula = [[
+        //     {polarity: true, relation: "ontop", args: [a, "floor"]},
+        //     {polarity: true, relation: "holding", args: [b]}
+        // ]];
         return interpretation;
     }
-    /**
-     * Search for candidates object
-     */
-    function searchForCandidates(rootEntity : Parser.Entity, existingObjects: ObjectDict) : Candidates {
-      var rootCandidates: Candidates = filterCandidate(rootEntity, existingObjects);
-      console.log("rootCandidates", rootCandidates);
-      var mainCandidates: string[] = rootCandidates.main;
-      // You can retrieve all the nested object describing the location from nestedCandidates
-      var nestedCandidates: Candidates = rootCandidates.nested;
-      if (nestedCandidates !== undefined){
-        console.log("Found nested candidates: " + nestedCandidates.main);
-      }
-      console.log("Found candidates: " + mainCandidates.length);
-      for(var obj of mainCandidates) {
-          console.log(obj);
-      }
-      return rootCandidates;
-    }
+    // /**
+    //  * Search for candidates object
+    //  */
+    // function searchForCandidates(rootEntity : Parser.Entity, existingObjects: ObjectDict) : Candidates {
+    //   var rootCandidates: Candidates = filterCandidate(rootEntity, existingObjects);
+    //   console.log("rootCandidates", rootCandidates);
+    //   var mainCandidates: string[] = rootCandidates.main;
+    //   // You can retrieve all the nested object describing the location from nestedCandidates
+    //   var nestedCandidates: Candidates = rootCandidates.nested;
+    //   if (nestedCandidates !== undefined){
+    //     console.log("Found nested candidates: " + nestedCandidates.main);
+    //   }
+    //   console.log("Found candidates: " + mainCandidates.length);
+    //   for(var obj of mainCandidates) {
+    //       console.log(obj);
+    //   }
+    //   return rootCandidates;
+    // }
 
     /**
      * Search for candidates object
      */
-    function performArcConsistency(candidates : Candidates, existingObjects: ObjectDict) : Candidates{
-      var legalCandidates : Candidates;
-      if (candidates.nested !== undefined){
-        legalCandidates = performArcConsistency(candidates.nested, existingObjects);
-      }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      // for (var candidate of candidates.main){
-      //   var foundObject : FoundObject = existingObjects[candidate];
-      //     for (var nested of candidates.nested.main){
-      //       var nestedObject : FoundObject = existingObjects[nested];
-      //       if (hasValidLocation(foundObject,candidates.relation,nestedObject)){
-      //               // this is the right candidate pair.
-      //               console.log("find the right candidate pair")
-      //
-      //               return {main : candidate, nested : nested}
-      //
-      //       }
-      //     }
-      //   }
-      // }
-      return undefined
-    }
+    // function performArcConsistency(candidates : Candidates, existingObjects: ObjectDict) : Candidates {
+    //   var legalCandidates : Candidates;
+    //   if(candidates.nested != undefined){
+    //      = performArcConsistency(candidates.nested,existingObjects);
+    //   }
+    //
+    //   // for (var candidate of candidates.main){
+    //   //   var foundObject : FoundObject = existingObjects[candidate];
+    //   //   if (candidates.nested !== undefined){
+    //   //     for (var nested of candidates.nested.main){
+    //   //       var nestedObject : FoundObject = existingObjects[nested];
+    //   //       if {
+    //   //               // this is the right candidate pair.
+    //   //               console.log("find the right candidate pair")
+    //   //               return {main : candidate, nested : nested}
+    //   //
+    //   //           }
+    //   //       }
+    //   //     }
+    //   //   }
+    //   // }
+    //   return undefined
+    // }
 
     /**
      * Check if two objects are correclty related and check physics laws
@@ -317,22 +307,38 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         if (rootObject.object != undefined) {
             relation = rootObject.location.relation;
             var nestedCandidates = filterCandidate(rootObject.location.entity,objects);
-            // TODO: Maybe checking all nested candidates relationship here
-
+            // Checking all nested candidates relationship
             console.log("nested candidates",nestedCandidates);
             rootObject = rootObject.object;
+
+        }
+        if(nestedCandidates != undefined) {
+          for (var name of Object.keys(objects)) {
+              // Check all now available properties
+              var object = objects[name];
+              var def = object.definition;
+              if (hasSameAttributes(rootObject,def)) {
+                  for (var nested of nestedCandidates.main){
+                    if(hasValidLocation(objects[name],relation,objects[nested])){
+                      objCandidates.push(name);
+                    }
+                  }
+              }
+          }
+        }else{
+          for (var name of Object.keys(objects)) {
+              // Check all now available properties
+              var object = objects[name];
+              var def = object.definition;
+              if (hasSameAttributes(rootObject,def)) {
+                      objCandidates.push(name);
+              }
+          }
         }
 
-        console.log("Searching: " + rootObject["size"] + ", " + rootObject["form"] + ", " + rootObject["color"]);
-        for (var name of Object.keys(objects)) {
-            // Check all now available properties
-            var object = objects[name];
-            var def = object.definition;
-            console.log("Possible: " + name + ", " + def["size"] + ", " + def["form"] + ", " + def["color"]);
-            if (hasSameAttributes(rootObject,def)) {
-                objCandidates.push(name);
-            }
-        }
+
+
+        console.log("Main:", objCandidates);
 
         return new Candidates(objCandidates, relation, nestedCandidates);
     }
