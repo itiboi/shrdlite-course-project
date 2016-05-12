@@ -154,7 +154,6 @@ module Interpreter {
         var interpretation : DNFFormula;
         // Filter out objects which don't exist in world state
         var existingObjects: ObjectDict = filterExistingObjects(state);
-        console.log(existingObjects,"existingObjects");
         var mainCandidates: Candidates = filterCandidate(cmd.entity,existingObjects);
         console.log("command",cmd.command);
 
