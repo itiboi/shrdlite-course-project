@@ -157,7 +157,7 @@ module Interpreter {
     // Filter out objects which don't exist in world state
     var existingObjects: ObjectDict = filterExistingObjects(state);
     var mainCandidates: Candidates = filterCandidate(cmd.entity,existingObjects);
-    console.log("command",cmd.location.entity.object);
+    console.log("command",cmd);
 
     switch(cmd.command){
       case "move" :
@@ -171,7 +171,6 @@ module Interpreter {
             }
           }
         }
-        console.log("interpretation",interpretation);
       }
       break;
       case "take" :
@@ -180,10 +179,9 @@ module Interpreter {
       for (var target of mainCandidates.main){
         interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target]}]);
       }
-      console.log("interpretation",interpretation[0][0].args);
       break;
-
     }
+    console.log("interpretation",interpretation[0][0].args);
     return interpretation.length == 0 ? null : interpretation ;
   }
 
