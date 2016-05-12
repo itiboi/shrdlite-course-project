@@ -211,24 +211,42 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
     /**
      * Search for candidates object
      */
-    function performArcConsistency(candidates : Candidates, existingObjects: ObjectDict){
-      for (var candidate of candidates.main){
-        var foundObject : FoundObject = existingObjects[candidate];
-        if (candidates.nested !== undefined){
-          for (var nested of candidates.nested.main){
-            var nestedObject : FoundObject = existingObjects[nested];
-            if (candidates.relation == "inside" || candidates.relation == "ontop"){
-              if ((foundObject.stackId == nestedObject.stackId)
-                  && (foundObject.stackLocation - 1 == nestedObject.stackLocation)){
-                    // this is the right candidate pair.
-                    console.log("find the right candidate pair")
-                    return {main : candidate, nested : nested}
-
-                }
-            }
-          }
-        }
+    function performArcConsistency(candidates : Candidates, existingObjects: ObjectDict) : Candidates{
+      var legalCandidates : Candidates;
+      if (candidates.nested !== undefined){
+        legalCandidates = performArcConsistency(candidates.nested, existingObjects);
       }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      // for (var candidate of candidates.main){
+      //   var foundObject : FoundObject = existingObjects[candidate];
+      //     for (var nested of candidates.nested.main){
+      //       var nestedObject : FoundObject = existingObjects[nested];
+      //       if (hasValidLocation(foundObject,candidates.relation,nestedObject)){
+      //               // this is the right candidate pair.
+      //               console.log("find the right candidate pair")
+      //
+      //               return {main : candidate, nested : nested}
+      //
+      //       }
+      //     }
+      //   }
+      // }
       return undefined
     }
 
