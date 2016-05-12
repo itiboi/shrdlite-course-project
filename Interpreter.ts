@@ -232,6 +232,33 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
       return undefined
     }
 
+    /**
+     * Check if two objects are correclty related and check physics laws
+     */
+    function hasValidLocation(c1 : FoundObject, relation : string, c2: FoundObject):boolean{
+       switch(relation){
+         case "leftof" :
+            return c1.stackId == c2.stackId - 1;
+         case "rightof" :
+            return c1.stackId -1 == c2.stackId;
+         case "inside":
+             //  Objects are “inside” boxes, but “ontop” of other objects.
+             // Maybe handle box in an error ???
+            return c1.stackId == c2.stackId && c1.stackLocation - 1 == c2.stackLocation && c2.definition.form == "box";
+         case "ontop" :
+            return c1.stackId == c2.stackId && c1.stackLocation - 1 == c2.stackLocation && supportingPhysicLaw(c1,c2);
+         case "under":
+            // TODO : not sure if we should take care of the physics laws here i.e supportingPhysicLaw(c2,c1)
+            return c1.stackId == c2.stackId && c1.stackLocation  < c2.stackLocation ;
+         case "beside":
+            return hasValidLocation(c1,"leftof",c2) || hasValidLocation(c1,"rightof",c2);
+         case "above" :
+            return c1.stackId == c2.stackId && c1.stackLocation  > c2.stackLocation ;
+
+       }
+       return true;
+    }
+
 
     /**
      * Filters out all objects which don't exist in world state.
@@ -272,25 +299,50 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         if (rootObject.object != undefined) {
             relation = rootObject.location.relation;
             var nestedCandidates = filterCandidate(rootObject.location.entity,objects);
+            // TODO: Maybe checking all nested candidates relationship here
+
             console.log("nested candidates",nestedCandidates);
             rootObject = rootObject.object;
         }
 
         console.log("Searching: " + rootObject["size"] + ", " + rootObject["form"] + ", " + rootObject["color"]);
         for (var name of Object.keys(objects)) {
-
             // Check all now available properties
             var object = objects[name];
             var def = object.definition;
             console.log("Possible: " + name + ", " + def["size"] + ", " + def["form"] + ", " + def["color"]);
-            if ((rootObject["form"] == "anyform" || rootObject["form"] == def["form"]) &&
-                (rootObject["size"] == null || rootObject["size"] == def["size"]) &&
-                (rootObject["color"] == null || rootObject["color"] == def["color"])) {
+            if (hasSameAttributes(rootObject,def)) {
                 objCandidates.push(name);
             }
         }
 
         return new Candidates(objCandidates, relation, nestedCandidates);
+    }
+    /**
+     * Check if two objects havce the same attributes.
+     */
+    function hasSameAttributes (currObject : Parser.Object, other : ObjectDefinition):boolean{
+      return (currObject.form == "anyform" || currObject.form == other.form)&&
+         (currObject.size == null || currObject.size == other.size) &&
+         (currObject.color == null || currObject.color == other.color)
+    }
+    /**
+     * Handle physics laws
+     */
+    function supportingPhysicLaw(c1 : FoundObject, c2 : FoundObject) : boolean {
+      if(c2.definition.form == "ball"){
+        return false;
+      }
+      if(c2.definition.form == "pyramid" && c1.definition.form == "box"){
+        return false;
+      }
+      if(c2.definition.size == "small" && c1.definition.size == "big"){
+        return false;
+      }
+      if(c2.definition.form == "brick" && c1.definition.form == "box" && c1.definition.size == "small" && c1.definition.size == "small"){
+        return false;
+      }
+      return true;
     }
 
 }
