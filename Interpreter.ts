@@ -162,17 +162,21 @@ module Interpreter {
             console.log("move",cmd.command);
             if (cmd.location !== undefined) {
                 var goalLocationCandidates: Candidates = filterCandidate(cmd.location.entity,existingObjects);
-                interpretation = [[
-                    {polarity: true, relation: cmd.location.relation, args: [mainCandidates.main[0],goalLocationCandidates.main[0]]}
-                ]];
+                for (var target of mainCandidates.main){
+                  for (var goal of goalLocationCandidates.main){
+                    interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target,goal]}]);
+                  }
+                }
+                console.log("interpretation",interpretation);
             }
             break;
           case "take" :
             console.log("take",cmd.command);
             // handle ambiguity
-            interpretation = [[
-                {polarity: true, relation: "holding", args: [mainCandidates.main[0]]}
-            ]];
+            for (var target of mainCandidates.main){
+                interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target]}]);
+            }
+            console.log("interpretation",interpretation);
             break;
 
         }
