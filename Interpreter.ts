@@ -98,13 +98,13 @@ module Interpreter {
   * Internal representation for available objects in WorldState.
   */
   class FoundObject {
-    floor : boolean;
+    floor : boolean;  // true if it is the floor
     held: boolean;
-    // -1 if held==true
+    // -1 if held==true or floor
     // in the realworld representation stackId==0
     // means that you are on the left
     stackId: number;
-    // -1 if held==true
+    // -1 if held==true or floor
     // in the realworld representation stackId==0
     // means that you are on the floor
     stackLocation: number;
@@ -125,7 +125,6 @@ module Interpreter {
 
   /**
   * Nested class to retrieve all the objects describing an object and its location
-  * TODO: save the relationship between the nested object. (i.e inside, ontop ...)
   */
   class Candidates {
     main: string[];
@@ -161,9 +160,10 @@ module Interpreter {
 
     switch(cmd.command){
       case "move" :
-      console.log("move",cmd.command);
       if (cmd.location !== undefined) {
         var goalLocationCandidates: Candidates = filterCandidate(cmd.location.entity,existingObjects);
+        console.log("main",mainCandidates);
+        console.log("goal",goalLocationCandidates);
         for (var target of mainCandidates.main){
           for (var goal of goalLocationCandidates.main){
             if (isValidGoalLocation(existingObjects[target],cmd.location.relation,existingObjects[goal])){
@@ -174,14 +174,16 @@ module Interpreter {
       }
       break;
       case "take" :
-      console.log("take",cmd.command);
       // handle ambiguity
       for (var target of mainCandidates.main){
-        interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target]}]);
+        if (target != "floor"){
+          interpretation.push([{polarity: true, relation: "holding", args: [target]}]);
+        }
       }
       break;
     }
     console.log("interpretation",interpretation[0][0].args);
+    console.log("interpretation",interpretation);
     return interpretation.length == 0 ? null : interpretation ;
   }
 
@@ -200,9 +202,9 @@ module Interpreter {
         if(c2.definition.size == "small" && c1.definition.size == "large"){
           return false;
         }
-        return c1.stackId == c2.stackId && c1.stackLocation - 1 == c2.stackLocation && c2.definition.form == "box";
+        return (c1.stackId == c2.stackId || c2.stackId == -1) && c1.stackLocation - 1 == c2.stackLocation && c2.definition.form == "box";
       case "ontop" :
-        return c1.stackId == c2.stackId && c1.stackLocation - 1 == c2.stackLocation && supportingPhysicLaw(c1,c2);
+        return (c1.stackId == c2.stackId || c2.stackId == -1) && c1.stackLocation - 1 == c2.stackLocation && supportingPhysicLaw(c1,c2);
       case "under":
         // TODO : not sure if we should take care of the physics laws here i.e supportingPhysicLaw(c2,c1)
         return c1.stackId == c2.stackId && c1.stackLocation  < c2.stackLocation ;
@@ -226,7 +228,6 @@ module Interpreter {
         return true;
       case "inside":
         //  Objects are “inside” boxes, but “ontop” of other objects.
-        // Maybe handle box in an error ???
         if(c2.definition.size == "small" && c1.definition.size == "large"){
           return false;
         }
@@ -269,7 +270,7 @@ module Interpreter {
           continue;
         }
       }
-      existingObjects["floor"] = new FoundObject({form:"floor", size:null, color: null}, false, -2, -2,true);
+      existingObjects["floor"] = new FoundObject({form:"floor", size:null, color: null}, false, -1, -1,true);
 
     }
     return existingObjects;
@@ -286,10 +287,7 @@ module Interpreter {
     if (rootObject.object != undefined) {
       relation = rootObject.location.relation;
       var nestedCandidates = filterCandidate(rootObject.location.entity,objects);
-      // Checking all nested candidates relationship
-      console.log("nested candidates",nestedCandidates);
       rootObject = rootObject.object;
-
     }
     if(nestedCandidates != undefined) {
       for (var name of Object.keys(objects)) {
@@ -298,6 +296,7 @@ module Interpreter {
         var def = object.definition;
         if (hasSameAttributes(rootObject,def)) {
           for (var nested of nestedCandidates.main){
+            // console.log("hasValidLocation",objects[name],objects[nested]);
             if(hasValidLocation(objects[name],relation,objects[nested])){
               objCandidates.push(name);
             }
@@ -314,11 +313,6 @@ module Interpreter {
         }
       }
     }
-
-
-
-    console.log("Main:", objCandidates);
-
     return new Candidates(objCandidates, relation, nestedCandidates);
   }
   /**
@@ -334,6 +328,9 @@ module Interpreter {
   */
   function supportingPhysicLaw(c1 : FoundObject, c2 : FoundObject) : boolean {
     if(c2.definition.form == "ball"){
+      return false;
+    }
+    if (c1.definition.form == "ball" && !(c2.definition.form == "box" || c2.definition.form == "floor")){
       return false;
     }
     if(c2.definition.form == "pyramid" && c1.definition.form == "box"){
