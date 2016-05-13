@@ -156,6 +156,9 @@ module Interpreter {
   */
   function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
     // TODO: Extension for 'all' quantifier (small)
+    // check inside the nested for loop if the quantifier is all
+    // if so, we will have to return a conjunction of goals instead of a disjunction
+    // (Or everything should be handle in the planner ?)
     var interpretation : DNFFormula = [];
     console.log("command", cmd);
 
@@ -173,7 +176,7 @@ module Interpreter {
 
     switch (cmd.command) {
       case "move":
-        // FIXME: Handle ambiguity
+        // FIXME: Handle ambiguity (ask user for clarification)
         // Add every feasible combination of target and goal as interpretation
         for (var target of mainCandidates.main) {
           for (var goal of goalLocationCandidates.main) {
@@ -184,7 +187,7 @@ module Interpreter {
         }
         break;
       case "take":
-        // FIXME: Handle ambiguity
+        // FIXME: Handle ambiguity (ask user for clarification)
         for (var target of mainCandidates.main) {
           if (target != "floor") {
             interpretation.push([{polarity: true, relation: "holding", args: [target]}]);
@@ -193,6 +196,9 @@ module Interpreter {
         break;
       case "put":
         // FIXME
+        // command --> move  it    location  {% R({command:"put", location:2}) %}
+        // FIXME: Handle ambiguity (ask user for clarification)
+
     }
 
     console.log("interpretation",interpretation[0][0].args);
@@ -229,7 +235,8 @@ module Interpreter {
         return c1.stackId == c2.stackId && c1.stackLocation  > c2.stackLocation;
 
     }
-    return true;
+    console.warn("Unknown relation received:", relation);
+    return false;
   }
 
   /**
@@ -239,15 +246,17 @@ module Interpreter {
     if(c1==c2) {
       return false;
     }
-    
+
     switch(relation){
       case "leftof":
         return true;
       case "rightof":
         return true;
       case "inside":
-        // FIXME: Why not use isStackingAllowedByPhysics() here?
-        //  Objects are “inside” boxes, but “ontop” of other objects.
+        // Why not use isStackingAllowedByPhysics() here?
+        // Because :
+        // Objects are “inside” boxes, but “ontop” of other objects
+        // AND Small objects cannot support large objects.
         if(c2.definition.size == "small" && c1.definition.size == "large") {
           return false;
         }
@@ -263,8 +272,10 @@ module Interpreter {
     }
 
     // FIXME: Shouldn't all unknown relations be denied?
+    // Yes maybe but the parser will only give you those relations
+    // Otherwise the parsing will fail.
     console.warn("Unknown relation received:", relation);
-    return true;
+    return false;
   }
 
   /**
@@ -323,7 +334,7 @@ module Interpreter {
         if(nestedCandidates == undefined) {
           objCandidates.push(name);
         }
-        // Check whether one relation satifying candidate exist
+        // Check whether one relation satisfying candidate exist
         else {
           for (var nested of nestedCandidates.main) {
             if (hasValidLocation(objects[name],relation,objects[nested])) {
