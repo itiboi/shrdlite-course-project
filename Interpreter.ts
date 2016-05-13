@@ -353,30 +353,39 @@ module Interpreter {
    * @param bottomC: Bottom object
    */
   function isStackingAllowedByPhysics(topC: FoundObject, bottomC: FoundObject) : boolean {
-    // Nothing can be stacked on top of a ball
+    // Balls must be in boxes or on the floor, otherwise they roll away.
+    if (topC.definition.form == "ball" && !(bottomC.definition.form == "box" || bottomC.definition.form == "floor")) {
+      return false;
+    }
+
+    // Balls cannot support anything
     if(bottomC.definition.form == "ball") {
       return false;
     }
 
-    // Ball can only be put inside box or on floor
-    if(topC.definition.form == "ball" && !(bottomC.definition.form == "box" || bottomC.definition.form == "floor")) {
-      return false;
-    }
-
-    // FIXME: Can you stack anything on a pyramid?
-    if(bottomC.definition.form == "pyramid" && topC.definition.form == "box") {
-      return false;
-    }
-
-    // Large object can not be stack on top of small
+    // Small objects cannot support large objects
     if(bottomC.definition.size == "small" && topC.definition.size == "large") {
       return false;
     }
 
-    // FIXME: Brick does not fit in small box?
-    if(bottomC.definition.form == "brick" && topC.definition.form == "box" &&
-       topC.definition.size == "small" && topC.definition.size == "small") {
-      return false;
+    // Boxes cannot contain pyramids, planks or boxes of the same size
+    if (bottomC.definition.form == "box" && bottomC.definition.size == topC.definition.size) {
+      if (topC.definition.form == "plank" || topC.definition.form == "pyramid" || topC.definition.form == "box") {
+        return false;
+      }
+    }
+
+    if (topC.definition.form == "box") {
+      // Small boxes cannot be supported by small bricks or pyramids
+      if (topC.definition.size == "small" && (bottomC.definition.form == "pyramid" ||
+        (bottomC.definition.form == "brick" || bottomC.definition.size == "small"))) {
+        return false;
+      }
+
+      // Large boxes cannot be supported by large pyramids.
+      if (topC.definition.size == "large" && bottomC.definition.size == "large" && bottomC.definition.form == "pyramid") {
+            return false;
+      }
     }
 
     // Rest is allowed
