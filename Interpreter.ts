@@ -119,6 +119,9 @@ module Interpreter {
     }
   }
 
+  /**
+   * Helper to make life easier with type checker.
+   */
   interface ObjectDict {
     [s: string]: FoundObject;
   }
@@ -130,6 +133,7 @@ module Interpreter {
     main: string[];
     relation : string;
     nested: Candidates;
+
     constructor(main: string[], relation : string, nested: Candidates){
       this.main = main;
       this.relation = relation;
@@ -153,115 +157,133 @@ module Interpreter {
   function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
     // TODO: Extension for 'all' quantifier (small)
     var interpretation : DNFFormula = [];
+    console.log("command", cmd);
+
     // Filter out objects which don't exist in world state
     var existingObjects: ObjectDict = filterExistingObjects(state);
-    var mainCandidates: Candidates = filterCandidate(cmd.entity,existingObjects);
-    console.log("command",cmd);
+    // Get candidates for object to move
+    var mainCandidates: Candidates = filterCandidate(cmd.entity, existingObjects);
+    console.log("main",mainCandidates);
+    // Get candidates for optional location (for move and put)
+    var goalLocationCandidates: Candidates = undefined;
+    if (cmd.location !== undefined) {
+      goalLocationCandidates = filterCandidate(cmd.location.entity, existingObjects);
+    }
+    console.log("goal", goalLocationCandidates);
 
-    switch(cmd.command){
-      case "move" :
-      if (cmd.location !== undefined) {
-        var goalLocationCandidates: Candidates = filterCandidate(cmd.location.entity,existingObjects);
-        console.log("main",mainCandidates);
-        console.log("goal",goalLocationCandidates);
-        for (var target of mainCandidates.main){
-          for (var goal of goalLocationCandidates.main){
-            if (isValidGoalLocation(existingObjects[target],cmd.location.relation,existingObjects[goal])){
+    switch (cmd.command) {
+      case "move":
+        // FIXME: Handle ambiguity
+        // Add every feasible combination of target and goal as interpretation
+        for (var target of mainCandidates.main) {
+          for (var goal of goalLocationCandidates.main) {
+            if (isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
               interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target,goal]}]);
             }
           }
         }
-      }
-      break;
-      case "take" :
-      // handle ambiguity
-      for (var target of mainCandidates.main){
-        if (target != "floor"){
-          interpretation.push([{polarity: true, relation: "holding", args: [target]}]);
+        break;
+      case "take":
+        // FIXME: Handle ambiguity
+        for (var target of mainCandidates.main) {
+          if (target != "floor") {
+            interpretation.push([{polarity: true, relation: "holding", args: [target]}]);
+          }
         }
-      }
-      break;
+        break;
+      case "put":
+        // FIXME
     }
+
     console.log("interpretation",interpretation[0][0].args);
     console.log("interpretation",interpretation);
-    return interpretation.length == 0 ? null : interpretation ;
+    return interpretation.length == 0 ? null : interpretation;
   }
 
   /**
-  * Check if two objects are correclty related and check physics laws
+  * Check if two objects are correctly related and satisfy physical laws
   */
-  function hasValidLocation(c1 : FoundObject, relation : string, c2: FoundObject):boolean{
-    switch(relation){
-      case "leftof" :
-        return c1.stackId == c2.stackId - 1;
-      case "rightof" :
-        return c1.stackId -1 == c2.stackId;
+  function hasValidLocation(c1: FoundObject, relation: string, c2: FoundObject): boolean {
+    switch(relation) {
+      case "leftof":
+        return c1.stackId == (c2.stackId - 1);
+      case "rightof":
+        return (c1.stackId - 1) == c2.stackId;
       case "inside":
-        //  Objects are “inside” boxes, but “ontop” of other objects.
+        // Objects are “inside” boxes, but “ontop” of other objects.
         // Maybe handle box in an error ???
-        if(c2.definition.size == "small" && c1.definition.size == "large"){
+        if(c2.definition.size == "small" && c1.definition.size == "large") {
           return false;
         }
-        return (c1.stackId == c2.stackId || c2.stackId == -1) && c1.stackLocation - 1 == c2.stackLocation && c2.definition.form == "box";
-      case "ontop" :
-        return (c1.stackId == c2.stackId || c2.stackId == -1) && c1.stackLocation - 1 == c2.stackLocation && supportingPhysicLaw(c1,c2);
+
+        // FIXME: Breaks if c1 on floor and c2 held? Why not use isStackingAllowedByPhysics()?
+        return (c1.stackId == c2.stackId || c2.stackId == -1) && c1.stackLocation-1 == c2.stackLocation && c2.definition.form == "box";
+      case "ontop":
+        // FIXME: First part breaks if c1 on floor and c2 held?
+        return (c1.stackId == c2.stackId || c2.stackId == -1) && c1.stackLocation-1 == c2.stackLocation && isStackingAllowedByPhysics(c1,c2);
       case "under":
-        // TODO : not sure if we should take care of the physics laws here i.e supportingPhysicLaw(c2,c1)
-        return c1.stackId == c2.stackId && c1.stackLocation  < c2.stackLocation ;
+        // FIXME: not sure if we should take care of the physics laws here i.e isStackingAllowedByPhysics(c2,c1)
+        return c1.stackId == c2.stackId && c1.stackLocation  < c2.stackLocation;
       case "beside":
-        return hasValidLocation(c1,"leftof",c2) || hasValidLocation(c1,"rightof",c2);
-      case "above" :
-        return c1.stackId == c2.stackId && c1.stackLocation  > c2.stackLocation ;
+        return hasValidLocation(c1, "leftof", c2) || hasValidLocation(c1, "rightof", c2);
+      case "above":
+        return c1.stackId == c2.stackId && c1.stackLocation  > c2.stackLocation;
 
     }
     return true;
   }
 
-  function isValidGoalLocation(c1 : FoundObject, relation : string, c2: FoundObject):boolean{
-    if(c1==c2){
+  /**
+   * Check whether given relation is in general feasible considering physical laws.
+   */
+  function isValidGoalLocation(c1 : FoundObject, relation : string, c2: FoundObject): boolean{
+    if(c1==c2) {
       return false;
     }
+    
     switch(relation){
-      case "leftof" :
+      case "leftof":
         return true;
-      case "rightof" :
+      case "rightof":
         return true;
       case "inside":
+        // FIXME: Why not use isStackingAllowedByPhysics() here?
         //  Objects are “inside” boxes, but “ontop” of other objects.
-        if(c2.definition.size == "small" && c1.definition.size == "large"){
+        if(c2.definition.size == "small" && c1.definition.size == "large") {
           return false;
         }
         return c2.definition.form == "box";
-      case "ontop" :
-        return supportingPhysicLaw(c1,c2);
+      case "ontop":
+        return isStackingAllowedByPhysics(c1,c2);
       case "under":
-        return true ;
+        return true;
       case "beside":
         return true;
-      case "above" :
+      case "above":
         return true;
     }
+
+    // FIXME: Shouldn't all unknown relations be denied?
+    console.warn("Unknown relation received:", relation);
     return true;
   }
 
-
-
   /**
   * Filters out all objects which don't exist in world state.
-  * The property objects of WorldState interface map all the possible indentifier of objects.
-  * Even the one that are not currenlty in the given world.
+  * The WorldState.objects property maps all possible identifier to objects,
+  * even those who are not in the given world.
   */
   function filterExistingObjects(state: WorldState) : ObjectDict {
     var existingObjects: ObjectDict = {};
     for (var name of Object.keys(state.objects)) {
-
       var definition: ObjectDefinition = state.objects[name];
-      // Check whether name exists on stacks or is held
+      // Check whether object is held
       if(state.holding == name) {
         existingObjects[name] = new FoundObject(definition, true, -1, -1,false);
         continue;
       }
 
+      // Check whether object exists on stacks
       for (var i = 0; i < state.stacks.length; i++) {
         var stack = state.stacks[i];
         var loc = stack.indexOf(name)
@@ -270,8 +292,9 @@ module Interpreter {
           continue;
         }
       }
-      existingObjects["floor"] = new FoundObject({form:"floor", size:null, color: null}, false, -1, -1,true);
 
+      // FIXME: Why do we add it every time object was not found?
+      existingObjects["floor"] = new FoundObject({form:"floor", size:null, color: null}, false, -1, -1, true);
     }
     return existingObjects;
   }
@@ -284,64 +307,79 @@ module Interpreter {
     var rootObject: Parser.Object = entity.object;
     var relation : string = undefined;
     var nestedCandidates : Candidates = undefined;
+
+    // Unpack object if we have a location relationship here
     if (rootObject.object != undefined) {
       relation = rootObject.location.relation;
       var nestedCandidates = filterCandidate(rootObject.location.entity,objects);
       rootObject = rootObject.object;
     }
-    if(nestedCandidates != undefined) {
-      for (var name of Object.keys(objects)) {
-        // Check all now available properties
-        var object = objects[name];
-        var def = object.definition;
-        if (hasSameAttributes(rootObject,def)) {
-          for (var nested of nestedCandidates.main){
-            // console.log("hasValidLocation",objects[name],objects[nested]);
-            if(hasValidLocation(objects[name],relation,objects[nested])){
+
+    // Check now with all available properties
+    for (var name of Object.keys(objects)) {
+      var object = objects[name];
+      var def = object.definition;
+      if (hasSameAttributes(rootObject, def)) {
+        if(nestedCandidates == undefined) {
+          objCandidates.push(name);
+        }
+        // Check whether one relation satifying candidate exist
+        else {
+          for (var nested of nestedCandidates.main) {
+            if (hasValidLocation(objects[name],relation,objects[nested])) {
               objCandidates.push(name);
+              break;
             }
           }
         }
       }
-    }else{
-      for (var name of Object.keys(objects)) {
-        // Check all now available properties
-        var object = objects[name];
-        var def = object.definition;
-        if (hasSameAttributes(rootObject,def)) {
-          objCandidates.push(name);
-        }
-      }
     }
+
     return new Candidates(objCandidates, relation, nestedCandidates);
   }
+
   /**
-  * Check if two objects havce the same attributes.
-  */
-  function hasSameAttributes (currObject : Parser.Object, other : ObjectDefinition):boolean{
-    return (currObject.form == "anyform" || currObject.form == other.form)&&
-    (currObject.size == null || currObject.size == other.size) &&
-    (currObject.color == null || currObject.color == other.color)
+   * Check if two objects have the same attributes.
+   */
+  function hasSameAttributes (currObject: Parser.Object, other: ObjectDefinition): boolean {
+    return (currObject.form == "anyform" || currObject.form == other.form) &&
+      (currObject.size == null || currObject.size == other.size) &&
+      (currObject.color == null || currObject.color == other.color);
   }
+
   /**
-  * Handle physics laws
-  */
-  function supportingPhysicLaw(c1 : FoundObject, c2 : FoundObject) : boolean {
-    if(c2.definition.form == "ball"){
+   * Check whether stacking of the objects is allowed by our understanding of physics.
+   * @param topC: Top object
+   * @param bottomC: Bottom object
+   */
+  function isStackingAllowedByPhysics(topC: FoundObject, bottomC: FoundObject) : boolean {
+    // Nothing can be stacked on top of a ball
+    if(bottomC.definition.form == "ball") {
       return false;
     }
-    if (c1.definition.form == "ball" && !(c2.definition.form == "box" || c2.definition.form == "floor")){
+
+    // Ball can only be put inside box or on floor
+    if(topC.definition.form == "ball" && !(bottomC.definition.form == "box" || bottomC.definition.form == "floor")) {
       return false;
     }
-    if(c2.definition.form == "pyramid" && c1.definition.form == "box"){
+
+    // FIXME: Can you stack anything on a pyramid?
+    if(bottomC.definition.form == "pyramid" && topC.definition.form == "box") {
       return false;
     }
-    if(c2.definition.size == "small" && c1.definition.size == "large"){
+
+    // Large object can not be stack on top of small
+    if(bottomC.definition.size == "small" && topC.definition.size == "large") {
       return false;
     }
-    if(c2.definition.form == "brick" && c1.definition.form == "box" && c1.definition.size == "small" && c1.definition.size == "small"){
+
+    // FIXME: Brick does not fit in small box?
+    if(bottomC.definition.form == "brick" && topC.definition.form == "box" &&
+       topC.definition.size == "small" && topC.definition.size == "small") {
       return false;
     }
+
+    // Rest is allowed
     return true;
   }
 }
