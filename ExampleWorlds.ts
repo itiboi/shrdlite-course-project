@@ -132,3 +132,23 @@ ExampleWorlds["impossible"] = {
         "this is just an impossible world"
     ]
 };
+
+/*
+// The world used in the example on the course webpage
+ExampleWorlds["example"] = {
+    "stacks": [["c1"],["t3","b4"],[],["b5","b6","c2"],[]],
+    "holding": null,
+    "arm": 0,
+    "objects": {
+        "c1": { "form":"ball",   "size":"small",  "color":"white" },
+        "c2": { "form":"ball",   "size":"small",  "color":"black" },
+        "t3": { "form":"table",   "size":"large",  "color":"red" },
+        "b4": { "form":"box",   "size":"large",  "color":"green" },
+        "b5": { "form":"box",   "size":"large",  "color":"yellow" },
+        "b6": { "form":"box",   "size":"small",  "color":"blue" }
+    },
+    "examples": [
+        "put the white ball in a box on the floor"
+    ]
+};
+*/
