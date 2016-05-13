@@ -210,20 +210,19 @@ module Interpreter {
       case "rightof":
         return (c1.stackId - 1) == c2.stackId;
       case "inside":
-        // Objects are “inside” boxes, but “ontop” of other objects.
-        // Maybe handle box in an error ???
+        // Objects are “inside” boxes, but “ontop” of other objects
+        // AND Small objects cannot support large objects.
+
+        // Handle something else than a box in an error message?
         if(c2.definition.size == "small" && c1.definition.size == "large") {
           return false;
         }
 
-        // FIXME: Breaks if c1 on floor and c2 held? Why not use isStackingAllowedByPhysics()?
-        return (c1.stackId == c2.stackId || c2.stackId == -1) && c1.stackLocation-1 == c2.stackLocation && c2.definition.form == "box";
+        return (c1.stackId == c2.stackId || c2.floor) && c1.stackLocation-1 == c2.stackLocation && c2.definition.form == "box";
       case "ontop":
-        // FIXME: First part breaks if c1 on floor and c2 held?
-        return (c1.stackId == c2.stackId || c2.stackId == -1) && c1.stackLocation-1 == c2.stackLocation && isStackingAllowedByPhysics(c1,c2);
+        return (c1.stackId == c2.stackId || c2.floor) && c1.stackLocation-1 == c2 . stackLocation && isStackingAllowedByPhysics(c1,c2);
       case "under":
-        // FIXME: not sure if we should take care of the physics laws here i.e isStackingAllowedByPhysics(c2,c1)
-        return c1.stackId == c2.stackId && c1.stackLocation  < c2.stackLocation;
+        return c1.stackId == c2.stackId && c1.stackLocation < c2.stackLocation;
       case "beside":
         return hasValidLocation(c1, "leftof", c2) || hasValidLocation(c1, "rightof", c2);
       case "above":
@@ -292,10 +291,11 @@ module Interpreter {
           continue;
         }
       }
-
-      // FIXME: Why do we add it every time object was not found?
-      existingObjects["floor"] = new FoundObject({form:"floor", size:null, color: null}, false, -1, -1, true);
     }
+
+    // Floor always exists
+    existingObjects["floor"] = new FoundObject({form:"floor", size:null, color: null}, false, -1, -1, true);
+
     return existingObjects;
   }
 
