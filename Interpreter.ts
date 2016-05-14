@@ -155,28 +155,29 @@ module Interpreter {
   * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
   */
   function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
+    // TODO: Handle ambiguity depending on quantifier for target and goal (ask user for clarification)
     // TODO: Extension for 'all' quantifier (small)
     // check inside the nested for loop if the quantifier is all
     // if so, we will have to return a conjunction of goals instead of a disjunction
-    // (Or everything should be handle in the planner ?)
-    var interpretation : DNFFormula = [];
-    console.log("command", cmd);
+
+    var interpretation: DNFFormula = [];
+    console.log("Command is", cmd);
 
     // Filter out objects which don't exist in world state
     var existingObjects: ObjectDict = filterExistingObjects(state);
+    console.log("Available objects are", Object.keys(existingObjects));
     // Get candidates for object to move
     var mainCandidates: Candidates = filterCandidate(cmd.entity, existingObjects);
-    console.log("main",mainCandidates);
+    console.log("Main", mainCandidates);
     // Get candidates for optional location (for move and put)
     var goalLocationCandidates: Candidates = undefined;
     if (cmd.location !== undefined) {
       goalLocationCandidates = filterCandidate(cmd.location.entity, existingObjects);
     }
-    console.log("goal", goalLocationCandidates);
+    console.log("Goal", goalLocationCandidates);
 
     switch (cmd.command) {
       case "move":
-        // FIXME: Handle ambiguity (ask user for clarification)
         // Add every feasible combination of target and goal as interpretation
         for (var target of mainCandidates.main) {
           for (var goal of goalLocationCandidates.main) {
@@ -187,7 +188,6 @@ module Interpreter {
         }
         break;
       case "take":
-        // FIXME: Handle ambiguity (ask user for clarification)
         for (var target of mainCandidates.main) {
           if (target != "floor") {
             interpretation.push([{polarity: true, relation: "holding", args: [target]}]);
@@ -195,14 +195,23 @@ module Interpreter {
         }
         break;
       case "put":
-        // FIXME
-        // command --> move  it    location  {% R({command:"put", location:2}) %}
-        // FIXME: Handle ambiguity (ask user for clarification)
+        // Sanity check whether we are actually holding something
+        if(state.holding == null) {
+          break;
+        }
 
+        // Add all feasible goals as interpretation
+        var target = state.holding;
+        for (var goal of goalLocationCandidates.main) {
+          if (isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])) {
+            interpretation.push([{ polarity: true, relation: cmd.location.relation, args: [target, goal] }]);
+          }
+        }
+        break;
     }
 
-    console.log("interpretation",interpretation[0][0].args);
-    console.log("interpretation",interpretation);
+    console.log("Interpretation", interpretation[0][0].args);
+    console.log("Interpretation", interpretation);
     return interpretation.length == 0 ? null : interpretation;
   }
 
@@ -235,6 +244,7 @@ module Interpreter {
         return c1.stackId == c2.stackId && c1.stackLocation  > c2.stackLocation;
 
     }
+
     console.warn("Unknown relation received:", relation);
     return false;
   }
@@ -253,10 +263,6 @@ module Interpreter {
       case "rightof":
         return true;
       case "inside":
-        // Why not use isStackingAllowedByPhysics() here?
-        // Because :
-        // Objects are “inside” boxes, but “ontop” of other objects
-        // AND Small objects cannot support large objects.
         if(c2.definition.size == "small" && c1.definition.size == "large") {
           return false;
         }
@@ -271,9 +277,6 @@ module Interpreter {
         return true;
     }
 
-    // FIXME: Shouldn't all unknown relations be denied?
-    // Yes maybe but the parser will only give you those relations
-    // Otherwise the parsing will fail.
     console.warn("Unknown relation received:", relation);
     return false;
   }
