@@ -75,6 +75,12 @@ module Planner {
      * be added using the `push` method.
      */
     function planInterpretation(interpretation : Interpreter.DNFFormula, state : WorldState) : string[] {
+        // TODO: Create graph structure from world state, find representation
+
+        // TODO: Use A*-planner to find world states to fulfill interpretation
+
+        // TODO: Create instruction set from world states
+
         // This function returns a dummy plan involving a random stack
         do {
             var pickstack = Math.floor(Math.random() * state.stacks.length);
