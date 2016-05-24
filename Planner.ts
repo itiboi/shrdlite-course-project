@@ -1,6 +1,7 @@
 ///<reference path="World.ts"/>
 ///<reference path="Interpreter.ts"/>
 ///<reference path="Graph.ts"/>
+///<reference path="Physics.ts"/>
 
 
 /**
@@ -78,16 +79,16 @@ module Planner {
      */
     function planInterpretation(interpretation : Interpreter.DNFFormula, state : WorldState) : string[] {
         // Create world state node from state
-        var startNode: WorldStateNode = new WorldStateNode(state.holding,state.stacks);
+        var startNode: WorldStateNode = new WorldStateNode(state.holding, state.stacks);
 
         // Use A*-planner to find world states to fulfill interpretation
         var result: SearchResult<WorldStateNode> = aStarSearch(
             // graph : Graph<Node>,
-            new WorldStateGraph(),
+            new WorldStateGraph(state.objects),
             // start : Node,
             startNode,
             // goal : (n:Node) => boolean,
-            (n) => isGoal(n, interpretation),
+            (n) => isGoal(n, interpretation, state.objects),
             // TODO heuristics : (n:Node) => number,
             (n) => heuristic(startNode, startNode, state),
             // timeout : number
@@ -100,21 +101,65 @@ module Planner {
 
     function heuristic(start: WorldStateNode, goal: WorldStateNode, sate: WorldState) : number {
         // TODO
+        // loop over conjunctions, take minimum
+        // loop over literals, take maximum
+        // for each literal: 2 + aboveStart*2 + aboveFinal*2 (for in, ontop)
         return 0;
     }
 
-    function isGoal(node: WorldStateNode, interpretation: Interpreter.DNFFormula): boolean {
-        // TODO
+    function isGoal(
+        node: WorldStateNode, interpretation: Interpreter.DNFFormula, objects: { [s: string]: ObjectDefinition }): boolean {
+        // Check each goal description
+        for(var goal of interpretation) {
+            var feasible = true;
+            for(var literal of goal) {
+                // Check if the literal is valid given the polarity and the location of object
+                var object1 = getObjectFromWorldState(node, literal.args[0], objects);
+                var object2 = getObjectFromWorldState(node, literal.args[1], objects);
+                if (literal.polarity != Physics.hasValidLocation(object1, literal.relation, object2)){
+                  feasible = false;
+                  break;
+                }
+            }
+
+            if (feasible) {
+                return true;
+            }
+        }
         return false;
+    }
+
+    function getObjectFromWorldState(
+        state: WorldStateNode, obj: string, objects: { [s: string]: ObjectDefinition }): Physics.FoundObject {
+        if(obj == "floor") {
+            return new Physics.FoundObject(null, false, -1, -1, true);
+        }
+        else {
+            var held = false;
+            var definition = objects[obj];
+            var stackId: number;
+            var stackLoc: number;
+            // Find location of object
+            for (var i = 0; i < state.stacks.length; i++) {
+                var stack = state.stacks[i];
+                var loc = stack.indexOf(name);
+                if (loc > -1) {
+                    stackLoc = loc;
+                    stackId = i;
+                    break;
+                }
+            }
+            return new Physics.FoundObject(definition, held, stackId, stackLoc, false);
+        }
     }
 
     class WorldStateNode {
         holding: string;
-        stack : Stack[];
+        stacks : Stack[];
 
-        constructor(holding : string, stack: Stack[]) {
+        constructor(holding : string, stacks: Stack[]) {
             this.holding = holding;
-            this.stack = stack;
+            this.stacks = stacks;
         }
 
         toString(): string {
@@ -124,16 +169,71 @@ module Planner {
     }
 
     class WorldStateGraph implements Graph<WorldStateNode> {
+        objects: { [s: string]: ObjectDefinition };
+
+        constructor(objects: { [s: string]: ObjectDefinition }) {
+            this.objects = objects;
+        }
+
         /** Computes the edges that leave from a node. */
         outgoingEdges(node: WorldStateNode): Edge<WorldStateNode>[] {
             // TODO
+            var edges: Edge<WorldStateNode>[] = [];
+
+            if(node.holding == null) {
+                // Pick up all object which are on the top
+                for (var i = 0; i < node.stacks.length; i++) {
+                    // Skip empty stacks
+                    if(node.stacks[i].length == 0) {
+                        continue;
+                    }
+
+                    // Add possible following state
+                    var newStacks: Stack[] = node.stacks.map((s) => s.slice());
+                    var obj = newStacks[i].pop();
+
+                    var edge = new Edge<WorldStateNode>();
+                    edge.from = node;
+                    edge.to = new WorldStateNode(obj, newStacks);
+                    edge.cost = 1; // TODO: Maybe consider arm position?
+                    edges.push(edge);
+                }
+            }
+            else {
+                // Find all possible stacks where to put the held object
+                for (var i = 0; i < node.stacks.length; i++) {
+                    // test non-empty stacks
+                    if(node.stacks[i].length != 0) {
+                        // Check physics
+                        var topObj = this.objects[node.holding];
+                        var bottomObj = this.objects[node.stacks[i][node.stacks[i].length-1]];
+                        if(!Physics.isStackingAllowedByPhysics(topObj, bottomObj)){
+                            continue;
+                        }
+
+                    }
+
+                    // Add possible following state
+                    var newStacks: Stack[] = node.stacks.map((s) => s.slice());
+                    newStacks[i].push(node.holding);
+
+                    var edge = new Edge<WorldStateNode>();
+                    edge.from = node;
+                    edge.to = new WorldStateNode(null, newStacks);
+                    edge.cost = 1; // TODO: Maybe consider arm position?
+                    edges.push(edge);
+                }
+            }
             return null;
         }
 
         /** A function that compares nodes. */
         compareNodes(a: WorldStateNode, b: WorldStateNode): number {
-            // TODO
-            return null;
+            if(a.toString() == b.toString()) {
+                return 0;
+            }
+            // TODO: Not needed, but maybe nicer?
+            return -1;
         }
     }
 
