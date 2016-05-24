@@ -77,78 +77,114 @@ module Planner {
      * be added using the `push` method.
      */
     function planInterpretation(interpretation : Interpreter.DNFFormula, state : WorldState) : string[] {
-        // TODO: Create graph structure from world state, find representation
-        var graph;
-        var start;
-        var goal;
+        // Create world state node from state
+        var startNode: WorldStateNode = new WorldStateNode(state.holding,state.stacks);
 
-        // TODO: Use A*-planner to find world states to fulfill interpretation
-        aStarSearch(
+        // Use A*-planner to find world states to fulfill interpretation
+        var result: SearchResult<WorldStateNode> = aStarSearch(
             // graph : Graph<Node>,
-            graph,
+            new WorldStateGraph(),
             // start : Node,
-            start,
+            startNode,
             // goal : (n:Node) => boolean,
-            (n) => (goal==n),
-            // heuristics : (n:Node) => number,
-            (n) => heuristic(start,goal,state),
+            (n) => isGoal(n, interpretation),
+            // TODO heuristics : (n:Node) => number,
+            (n) => heuristic(startNode, startNode, state),
             // timeout : number
-            10000
+            10000 //FIXME
         )
 
-        // TODO: Create instruction set from world states
+        // Create instruction set from world states
+        return createInstructions(result, state.objects);
+    }
 
-        // This function returns a dummy plan involving a random stack
-        do {
-            var pickstack = Math.floor(Math.random() * state.stacks.length);
-        } while (state.stacks[pickstack].length == 0);
-        var plan : string[] = [];
+    function heuristic(start: WorldStateNode, goal: WorldStateNode, sate: WorldState) : number {
+        // TODO
+        return 0;
+    }
 
-        // First move the arm to the leftmost nonempty stack
-        if (pickstack < state.arm) {
-            plan.push("Moving left");
-            for (var i = state.arm; i > pickstack; i--) {
-                plan.push("l");
-            }
-        } else if (pickstack > state.arm) {
-            plan.push("Moving right");
-            for (var i = state.arm; i < pickstack; i++) {
-                plan.push("r");
-            }
+    function isGoal(node: WorldStateNode, interpretation: Interpreter.DNFFormula): boolean {
+        // TODO
+        return false;
+    }
+
+    class WorldStateNode {
+        holding: string;
+        stack : Stack[];
+
+        constructor(holding : string, stack: Stack[]) {
+            this.holding = holding;
+            this.stack = stack;
         }
 
-        // Then pick up the object
-        var obj = state.stacks[pickstack][state.stacks[pickstack].length-1];
-        plan.push("Picking up the " + state.objects[obj].form,
-                  "p");
+        toString(): string {
+            // TODO
+            return null;
+        }
+    }
 
-        if (pickstack < state.stacks.length-1) {
-            // Then move to the rightmost stack
-            plan.push("Moving as far right as possible");
-            for (var i = pickstack; i < state.stacks.length-1; i++) {
-                plan.push("r");
-            }
-
-            // Then move back
-            plan.push("Moving back");
-            for (var i = state.stacks.length-1; i > pickstack; i--) {
-                plan.push("l");
-            }
+    class WorldStateGraph implements Graph<WorldStateNode> {
+        /** Computes the edges that leave from a node. */
+        outgoingEdges(node: WorldStateNode): Edge<WorldStateNode>[] {
+            // TODO
+            return null;
         }
 
-        // Finally put it down again
-        plan.push("Dropping the " + state.objects[obj].form,
-                  "d");
+        /** A function that compares nodes. */
+        compareNodes(a: WorldStateNode, b: WorldStateNode): number {
+            // TODO
+            return null;
+        }
+    }
 
-        return plan;
+    function createInstructions(
+        result: SearchResult<WorldStateNode>, objects: { [s: string]: ObjectDefinition }): string[] {
+        // TODO
+        return null;
     }
-    function createGraph(state : WorldState) : Graph<Node> {
-      
-      return
-    }
-    function heuristic(start : Node, goal : Node, state: WorldState) : number {
 
-      return 0;
-    }
 
 }
+// // This function returns a dummy plan involving a random stack
+// do {
+//     var pickstack = Math.floor(Math.random() * state.stacks.length);
+// } while (state.stacks[pickstack].length == 0);
+// var plan : string[] = [];
+//
+// // First move the arm to the leftmost nonempty stack
+// if (pickstack < state.arm) {
+//     plan.push("Moving left");
+//     for (var i = state.arm; i > pickstack; i--) {
+//         plan.push("l");
+//     }
+// } else if (pickstack > state.arm) {
+//     plan.push("Moving right");
+//     for (var i = state.arm; i < pickstack; i++) {
+//         plan.push("r");
+//     }
+// }
+//
+// // Then pick up the object
+// var obj = state.stacks[pickstack][state.stacks[pickstack].length-1];
+// plan.push("Picking up the " + state.objects[obj].form,
+//           "p");
+//
+// if (pickstack < state.stacks.length-1) {
+//     // Then move to the rightmost stack
+//     plan.push("Moving as far right as possible");
+//     for (var i = pickstack; i < state.stacks.length-1; i++) {
+//         plan.push("r");
+//     }
+//
+//     // Then move back
+//     plan.push("Moving back");
+//     for (var i = state.stacks.length-1; i > pickstack; i--) {
+//         plan.push("l");
+//     }
+// }
+//
+// // Finally put it down again
+// plan.push("Dropping the " + state.objects[obj].form,
+//           "d");
+//
+// return plan;

@@ -98,7 +98,7 @@ function aStarSearch<Node> (
             // Reconstruct path
             var cr: Node;
             cr = current;
-            while(cr != start){
+            while(graph.compareNodes(cr, start) != 0) {
                 result.path.unshift(cr);
                 result.cost += costFromPre.getValue(cr);
                 cr = predecessor.getValue(cr);
