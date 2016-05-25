@@ -85,14 +85,18 @@ module Interpreter {
   }
 
   export function stringify(result : InterpretationResult) : string {
-    return result.interpretation.map((literals) => {
+    return stringifyInterpretation(result.interpretation);
+  }
+
+  export function stringifyInterpretation(interpretation: DNFFormula): string {
+    return interpretation.map((literals) => {
       return literals.map((lit) => stringifyLiteral(lit)).join(" & ");
       // return literals.map(stringifyLiteral).join(" & ");
     }).join(" | ");
   }
 
-  export function stringifyLiteral(lit : Literal) : string {
-    return (lit.polarity ? "" : "-") + lit.relation + "(" + lit.args.join(",") + ")";
+  export function stringifyLiteral(lit: Literal): string {
+      return (lit.polarity ? "" : "-") + lit.relation + "(" + lit.args.join(",") + ")";
   }
 
   /**
@@ -143,7 +147,10 @@ module Interpreter {
     var existingObjects: ObjectDict = filterExistingObjects(state);
     console.log("Available objects are", Object.keys(existingObjects));
     // Get candidates for object to move
-    var mainCandidates: Candidates = filterCandidate(cmd.entity, existingObjects);
+    var mainCandidates: Candidates = undefined;
+    if (cmd.command != "put") {
+        mainCandidates = filterCandidate(cmd.entity, existingObjects);
+    }
 
     console.log("Main", mainCandidates);
     // Get candidates for optional location (for move and put)
@@ -188,9 +195,10 @@ module Interpreter {
         break;
     }
 
-    console.log("Interpretation", interpretation[0][0].args);
-    console.log("Interpretation", interpretation);
-    return interpretation.length == 0 ? null : interpretation;
+    if (interpretation.length == 0) {
+      throw new Error("Sentence has no valid interpretation in world");
+    }
+    return interpretation;
   }
 
   /**

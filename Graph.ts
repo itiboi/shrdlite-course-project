@@ -84,6 +84,7 @@ function aStarSearch<Node> (
 
     while(!frontier.isEmpty()){
         if(Date.now() >= endTime){
+            console.log("Timeout occurred!");
             break;
         }
 

@@ -80,31 +80,61 @@ module Planner {
     function planInterpretation(interpretation : Interpreter.DNFFormula, state : WorldState) : string[] {
         // Create world state node from state
         var startNode: WorldStateNode = new WorldStateNode(state.holding, state.stacks);
+        console.log("Creating plan from interpretation");
+        console.log("Starting world state:", startNode.toString());
+        console.log("Goal criteria:", Interpreter.stringifyInterpretation(interpretation));
 
         // Use A*-planner to find world states to fulfill interpretation
+        console.log("Use A* to find shortest path to satisfy goal");
         var result: SearchResult<WorldStateNode> = aStarSearch(
-            // graph : Graph<Node>,
             new WorldStateGraph(state.objects),
-            // start : Node,
             startNode,
-            // goal : (n:Node) => boolean,
             (n) => isGoal(n, interpretation, state.objects),
-            // TODO heuristics : (n:Node) => number,
-            (n) => heuristic(startNode, startNode, state),
-            // timeout : number
-            10000 //FIXME
+            (n) => heuristic(startNode, interpretation, state.objects),
+            2 // TODO?
         )
 
         // Create instruction set from world states
+        console.log("Found solution path, generating instructions");
         return createInstructions(state.arm, result, state.objects);
     }
 
-    function heuristic(start: WorldStateNode, goal: WorldStateNode, sate: WorldState) : number {
-        // TODO
-        // loop over conjunctions, take minimum
-        // loop over literals, take maximum
-        // for each literal: 2 + aboveStart*2 + aboveFinal*2 (for in, ontop)
+    function heuristic(
+        state: WorldStateNode, goal: Interpreter.DNFFormula, objects: { [s: string]: ObjectDefinition }): number {
+        var conjHeuristic: number[] = [];
         return 0;
+        /*
+        // Loop over conjunctions
+        for (var conj of goal) {
+            // Loop over literals
+            var litHeuristic: number[] = [];
+            for (var literal of conj) {
+                // For each literal: 2 + aboveStart*2 + aboveFinal*2
+                var objs = literal.args.map((o) => getObjectFromWorldState(state, o, objects));
+                switch (literal.relation) {
+                    case "leftof":
+                        
+                    case "rightof":
+
+                    case "inside":
+                    case "ontop":
+                        
+                    case "under":
+                        
+                    case "beside":
+                        
+                    case "above":
+                        
+                }
+            }
+
+            // Take maximum
+            conjHeuristic.push(Math.max(...litHeuristic));
+        }
+
+        // Take minimum
+        return Math.min(...conjHeuristic);
+        */
     }
 
     function isGoal(
@@ -116,10 +146,15 @@ module Planner {
                 // Check if the literal is valid given the polarity and the location of object
                 var object1 = getObjectFromWorldState(node, literal.args[0], objects);
                 var object2 = getObjectFromWorldState(node, literal.args[1], objects);
-                if (literal.polarity != Physics.hasValidLocation(object1, literal.relation, object2)){
+                console.log("literals:", literal.args.join(", "), " rel:", literal.relation);
+                console.log("ob1:", object1);
+                console.log("ob2:", object2);
+                if (!Physics.hasValidLocation(object1, literal.relation, object2)){
+                  console.log("false")
                   feasible = false;
                   break;
                 }
+                console.log("true");
             }
 
             if (feasible) {
@@ -131,8 +166,14 @@ module Planner {
 
     function getObjectFromWorldState(
         state: WorldStateNode, obj: string, objects: { [s: string]: ObjectDefinition }): Physics.FoundObject {
-        if(obj == "floor") {
+        if(obj == undefined) {
+            return null;
+        }
+        else if(obj == "floor") {
             return new Physics.FoundObject(null, false, -1, -1, true);
+        }
+        else if(obj == state.holding) {
+            return new Physics.FoundObject(objects[obj], true, -1, -1, false);
         }
         else {
             var held = false;
@@ -142,7 +183,7 @@ module Planner {
             // Find location of object
             for (var i = 0; i < state.stacks.length; i++) {
                 var stack = state.stacks[i];
-                var loc = stack.indexOf(name);
+                var loc = stack.indexOf(obj);
                 if (loc > -1) {
                     stackLoc = loc;
                     stackId = i;
@@ -154,6 +195,7 @@ module Planner {
     }
 
     class WorldStateNode {
+        // null if no object is held
         holding: string;
         stacks : Stack[];
 
@@ -163,8 +205,11 @@ module Planner {
         }
 
         toString(): string {
-            // TODO
-            return null;
+            var str = "{";
+            str += "held: " + ((this.holding != null) ? this.holding : "none");
+            str += ", stacks: " + this.stacks.map((s) => "{" + s.join(", ") + "}").join(", ");
+            str += "}";
+            return str;
         }
     }
 
@@ -177,6 +222,7 @@ module Planner {
 
         /** Computes the edges that leave from a node. */
         outgoingEdges(node: WorldStateNode): Edge<WorldStateNode>[] {
+            console.log("Finding following states of", node.toString());
             // TODO: Maybe consider arm position? (Adds unnecessary complexity)
             var edges: Edge<WorldStateNode>[] = [];
 
@@ -197,6 +243,7 @@ module Planner {
                     edge.to = new WorldStateNode(obj, newStacks);
                     edge.cost = 1;
                     edges.push(edge);
+                    console.log("- ", edge.to.toString());
                 }
             }
             else {
@@ -210,7 +257,6 @@ module Planner {
                         if(!Physics.isStackingAllowedByPhysics(topObj, bottomObj)){
                             continue;
                         }
-
                     }
 
                     // Add possible following state
@@ -222,9 +268,11 @@ module Planner {
                     edge.to = new WorldStateNode(null, newStacks);
                     edge.cost = 1;
                     edges.push(edge);
+                    console.log("- ", edge.to.toString());
                 }
             }
-            return null;
+
+            return edges;
         }
 
         /** A function that compares nodes. */
@@ -267,15 +315,15 @@ module Planner {
 
             // Move arm to target/original stack
             if(armPosition > fullObj.stackId) {
-                instructions.push("Moving right");
-                for (var i = armPosition; i < fullObj.stackId; i++) {
-                    instructions.push("r");
+                instructions.push("Moving left");
+                for (var i = armPosition; i > fullObj.stackId; i--) {
+                    instructions.push("l");
                 }
             }
             else if (armPosition < fullObj.stackId) {
-                instructions.push("Moving left");
+                instructions.push("Moving right");
                 for (var i = armPosition; i < fullObj.stackId; i++) {
-                    instructions.push("l");
+                    instructions.push("r");
                 }
             }
 
@@ -288,9 +336,12 @@ module Planner {
                 // Take object
                 instructions.push("Picking up the " + fullObj.definition.form, "p");
             }
+
             lastState = nextState;
+            armPosition = fullObj.stackId;
         }
 
+        console.log("Generated instructions are:", instructions.join(", "));
         return instructions;
     }
 

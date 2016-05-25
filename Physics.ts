@@ -63,7 +63,8 @@ module Physics {
         return hasValidLocation(c1, "leftof", c2) || hasValidLocation(c1, "rightof", c2);
       case "above":
         return c1.stackId == c2.stackId && c1.stackLocation  > c2.stackLocation;
-
+      case "holding":
+        return c1.held;
     }
 
     console.warn("Unknown relation received:", relation);
