@@ -211,7 +211,7 @@ module Interpreter {
             break;
         }
 
-        console.log("Interpretation", interpretation[0][0].args);
+        //console.log("Interpretation", interpretation[0][0].args);
         console.log("Interpretation", interpretation);
 
         if ((cmd.entity.quantifier == "the") && interpretation.length > 1) {
@@ -225,7 +225,12 @@ module Interpreter {
             // TODO: disambiguation of the second quantifier
         }
 
-        return interpretation.length == 0 ? null : interpretation;
+        if( interpretation.length == 0){
+         throw new Error("No interpretation found");
+       }
+
+          return interpretation;
+
     }
 
     function askForClarification(interpretation :DNFFormula, column,existingObjects:ObjectDict){
