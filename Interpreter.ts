@@ -221,7 +221,7 @@ module Interpreter {
         if ((cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
             askForClarification(interpretation, 1, existingObjects);
         }
-        
+
         if( interpretation.length == 0){
             throw new Error("No interpretation found");
         }
@@ -230,7 +230,7 @@ module Interpreter {
 
     }
 
-    function askForClarification(interpretation :DNFFormula, column,existingObjects:ObjectDict){
+    function askForClarification(interpretation :DNFFormula, column : number,existingObjects:ObjectDict){
         var candidateSet = new collections.Set<string>();
         var descriptionLookUp = new collections.Dictionary<string, string>();
 
