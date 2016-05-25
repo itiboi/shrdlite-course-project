@@ -215,43 +215,11 @@ module Interpreter {
         console.log("Interpretation", interpretation);
 
         if ((cmd.entity.quantifier == "the") && interpretation.length > 1) {
-            // TODO: disambiguation of the first quantifier
-            var candidateSet = new collections.Set<string>();
-            var descriptionLookUp = new collections.Dictionary<string, string>();
+        askForClarification(interpretation,0,existingObjects);
 
-            for (var conj of interpretation) {
-                var firstLiteral : Literal;
-                var candidateID : string;
-                firstLiteral = conj[0];
-                candidateID = firstLiteral.args[0];
-                if (!candidateSet.contains(candidateID)) {
-                    var descrString : string = "the ";
-                    descrString += existingObjects[candidateID].definition.size + " ";
-                    descrString += existingObjects[candidateID].definition.color + " ";
-                    descrString += existingObjects[candidateID].definition.form;
-                    descriptionLookUp.setValue(descrString, candidateID);
-                    candidateSet.add(candidateID);
-                }
-            }
 
-            var userQuestion : string = "Did you mean ";
-            var firstTime : boolean = true;
-            for (var desc of descriptionLookUp.keys()){
-                if (!firstTime) {
-                    userQuestion += ", or "
-                }
-                userQuestion += desc;
-                firstTime = false;
-            }
-            userQuestion += "?";
-            var userResult : string = "";
-            function getResult(result : string) : void {
-                userResult = result;
-            }
-            world.printDebugInfo("Got to the actual asking part.");
-            world.readUserInput(userQuestion, getResult);
-            world.printDebugInfo(userResult);
-        }
+
+          }
 
         if ((cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
             // TODO: disambiguation of the second quantifier
@@ -260,18 +228,37 @@ module Interpreter {
         return interpretation.length == 0 ? null : interpretation;
     }
 
-    function askForClarification(interpretation :DNFFormula, existingObjects:ObjectDict){
-        var clarificationQuestion: string = "Do you mean ";
-        for(var lit of interpretation){
-            for(var elem of lit){
-                var ids:string[] = elem.args;
-                for(var id of ids)
-                clarificationQuestion +=  (existingObjects[id].definition.size) += "or";
-            }
+    function askForClarification(interpretation :DNFFormula, column,existingObjects:ObjectDict){
+      var candidateSet = new collections.Set<string>();
+      var descriptionLookUp = new collections.Dictionary<string, string>();
+
+      for (var conj of interpretation) {
+          var firstLiteral : Literal;
+          var candidateID : string;
+          firstLiteral = conj[0];
+          candidateID = firstLiteral.args[column];
+          if (!candidateSet.contains(candidateID)) {
+              var descrString : string = "the ";
+              descrString += existingObjects[candidateID].definition.size + " ";
+              descrString += existingObjects[candidateID].definition.color + " ";
+              descrString += existingObjects[candidateID].definition.form;
+              descriptionLookUp.setValue(descrString, candidateID);
+              candidateSet.add(candidateID);
+          }
+      }
+
+        var userQuestion : string = "Did you mean ";
+        var firstTime : boolean = true;
+        for (var desc of descriptionLookUp.keys()){
+            if (!firstTime) {
+                userQuestion += ", or "
+              }
+            userQuestion += desc;
+            firstTime = false;
         }
-        console.log("before error", clarificationQuestion);
-        throw new Error(clarificationQuestion);
-    }
+        throw new Error(userQuestion);
+      }
+
 
     /**
     * Check if two objects are correctly related and satisfy physical laws
