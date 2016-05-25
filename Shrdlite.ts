@@ -66,7 +66,7 @@ module Shrdlite {
 
         // Interpretation
         try {
-            var interpretations : Interpreter.InterpretationResult[] = Interpreter.interpret(parses, world.currentState, world);
+            var interpretations : Interpreter.InterpretationResult[] = Interpreter.interpret(parses, world.currentState);
             world.printDebugInfo("Found " + interpretations.length + " interpretations");
             interpretations.forEach((result, n) => {
                 world.printDebugInfo("  (" + n + ") " + Interpreter.stringify(result));

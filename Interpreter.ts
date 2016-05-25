@@ -37,13 +37,13 @@ module Interpreter {
     * @param currentState The current state of the world.
     * @returns Augments ParseResult with a list of interpretations. Each interpretation is represented by a list of Literals.
     */
-    export function interpret(parses : Parser.ParseResult[], currentState : WorldState, world : World) : InterpretationResult[] {
+    export function interpret(parses : Parser.ParseResult[], currentState : WorldState) : InterpretationResult[] {
         var errors : Error[] = [];
         var interpretations : InterpretationResult[] = [];
         parses.forEach((parseresult) => {
             try {
                 var result : InterpretationResult = <InterpretationResult>parseresult;
-                result.interpretation = interpretCommand(result.parse, currentState, world);
+                result.interpretation = interpretCommand(result.parse, currentState);
                 interpretations.push(result);
             } catch(err) {
                 errors.push(err);
@@ -155,7 +155,7 @@ module Interpreter {
     * @param state The current state of the world. Useful to look up objects in the world.
     * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
     */
-    function interpretCommand(cmd : Parser.Command, state : WorldState, world : World) : DNFFormula {
+    function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
         // TODO: Handle ambiguity depending on quantifier for target and goal (ask user for clarification)
         // TODO: Extension for 'all' quantifier (small)
         // check inside the nested for loop if the quantifier is all
