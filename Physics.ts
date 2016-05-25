@@ -53,10 +53,14 @@ module Physics {
         if(c2.definition.size == "small" && c1.definition.size == "large") {
           return false;
         }
-
-        return (c1.stackId == c2.stackId || c2.floor) && c1.stackLocation-1 == c2.stackLocation && c2.definition.form == "box";
+        return (c1.stackId == c2.stackId) && c1.stackLocation-1 == c2.stackLocation && c2.definition.form == "box";
       case "ontop":
-        return (c1.stackId == c2.stackId || c2.floor) && c1.stackLocation-1 == c2.stackLocation && isStackingAllowedByPhysics(c1.definition, c2.definition);
+        // Every object can be stacked on the floor.
+        // The floor is present at every stackId but the stackLocation has to be valid
+        if(c2.floor){
+          return c1.stackLocation-1 == c2.stackLocation
+        }
+        return c1.stackId == c2.stackId && c1.stackLocation-1 == c2.stackLocation && isStackingAllowedByPhysics(c1.definition, c2.definition);
       case "under":
         return c1.stackId == c2.stackId && c1.stackLocation < c2.stackLocation;
       case "beside":
