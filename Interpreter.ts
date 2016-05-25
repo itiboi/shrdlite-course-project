@@ -212,7 +212,28 @@ module Interpreter {
 
     console.log("Interpretation", interpretation[0][0].args);
     console.log("Interpretation", interpretation);
+    if((cmd.entity.quantifier == "the" || cmd.location.entity.quantifier == "the") && interpretation.length>1){
+      //askForClarification(interpretation, existingObjects);
+      console.log("inside clarification");
+        throw new Error ("blablalbla");
+    }
+
     return interpretation.length == 0 ? null : interpretation;
+  }
+
+
+
+  function askForClarification(interpretation :DNFFormula, existingObjects:ObjectDict){
+    var clarificationQuestion: string = "Do you mean ";
+    for(var lit of interpretation){
+      for(var elem of lit){
+        var ids:string[] = elem.args;
+        for(var id of ids)
+       clarificationQuestion +=  (existingObjects[id].definition.size) += "or";
+      }
+    }
+    console.log("before error", clarificationQuestion);
+    throw new Error(clarificationQuestion);
   }
 
   /**

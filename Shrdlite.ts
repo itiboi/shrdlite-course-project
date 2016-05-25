@@ -73,6 +73,10 @@ module Shrdlite {
             });
 
             if (interpretations.length > 1) {
+              //switch (){
+              //  case "the ":
+              //  case "a
+              //}
                 // several interpretations were found -- how should this be handled?
                 // should we throw an ambiguity error?
                 // ... throw new Error("Ambiguous utterance");
@@ -80,6 +84,7 @@ module Shrdlite {
             }
         }
         catch(err) {
+            console.log("catching?");
             world.printError("Interpretation error", err);
             return;
         }
