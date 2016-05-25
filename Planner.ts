@@ -96,7 +96,7 @@ module Planner {
         )
 
         // Create instruction set from world states
-        return createInstructions(result, state.objects);
+        return createInstructions(state.arm, result, state.objects);
     }
 
     function heuristic(start: WorldStateNode, goal: WorldStateNode, sate: WorldState) : number {
@@ -177,7 +177,7 @@ module Planner {
 
         /** Computes the edges that leave from a node. */
         outgoingEdges(node: WorldStateNode): Edge<WorldStateNode>[] {
-            // TODO
+            // TODO: Maybe consider arm position? (Adds unnecessary complexity)
             var edges: Edge<WorldStateNode>[] = [];
 
             if(node.holding == null) {
@@ -195,7 +195,7 @@ module Planner {
                     var edge = new Edge<WorldStateNode>();
                     edge.from = node;
                     edge.to = new WorldStateNode(obj, newStacks);
-                    edge.cost = 1; // TODO: Maybe consider arm position?
+                    edge.cost = 1;
                     edges.push(edge);
                 }
             }
@@ -220,7 +220,7 @@ module Planner {
                     var edge = new Edge<WorldStateNode>();
                     edge.from = node;
                     edge.to = new WorldStateNode(null, newStacks);
-                    edge.cost = 1; // TODO: Maybe consider arm position?
+                    edge.cost = 1;
                     edges.push(edge);
                 }
             }
@@ -238,53 +238,61 @@ module Planner {
     }
 
     function createInstructions(
-        result: SearchResult<WorldStateNode>, objects: { [s: string]: ObjectDefinition }): string[] {
-        // TODO
-        return null;
+        armInit: number, result: SearchResult<WorldStateNode>, objects: { [s: string]: ObjectDefinition }): string[] {
+        var instructions: string[] = [];
+        var lastState: WorldStateNode = null;
+        var armPosition = armInit;
+
+        // Generate instructions for every state change
+        for(var nextState of result.path) {
+            // Handle first state
+            if(lastState == null) {
+                lastState = nextState;
+                continue;
+            }
+
+            // Find object and new/old position
+            var heldObj: string;
+            var fullObj: Physics.FoundObject;
+            if (nextState.holding == null) {
+                // Object from last has been dropped
+                heldObj = lastState.holding;
+                fullObj = getObjectFromWorldState(nextState, heldObj, objects);
+            }
+            else {
+                // New object was taken
+                heldObj = nextState.holding;
+                fullObj = getObjectFromWorldState(lastState, heldObj, objects);
+            }
+
+            // Move arm to target/original stack
+            if(armPosition > fullObj.stackId) {
+                instructions.push("Moving right");
+                for (var i = armPosition; i < fullObj.stackId; i++) {
+                    instructions.push("r");
+                }
+            }
+            else if (armPosition < fullObj.stackId) {
+                instructions.push("Moving left");
+                for (var i = armPosition; i < fullObj.stackId; i++) {
+                    instructions.push("l");
+                }
+            }
+
+            // Perform actual action
+            if (nextState.holding == null) {
+                // Drop object
+                instructions.push("Dropping the " + fullObj.definition.form, "d");
+            }
+            else {
+                // Take object
+                instructions.push("Picking up the " + fullObj.definition.form, "p");
+            }
+            lastState = nextState;
+        }
+
+        return instructions;
     }
 
 
 }
-// // This function returns a dummy plan involving a random stack
-// do {
-//     var pickstack = Math.floor(Math.random() * state.stacks.length);
-// } while (state.stacks[pickstack].length == 0);
-// var plan : string[] = [];
-//
-// // First move the arm to the leftmost nonempty stack
-// if (pickstack < state.arm) {
-//     plan.push("Moving left");
-//     for (var i = state.arm; i > pickstack; i--) {
-//         plan.push("l");
-//     }
-// } else if (pickstack > state.arm) {
-//     plan.push("Moving right");
-//     for (var i = state.arm; i < pickstack; i++) {
-//         plan.push("r");
-//     }
-// }
-//
-// // Then pick up the object
-// var obj = state.stacks[pickstack][state.stacks[pickstack].length-1];
-// plan.push("Picking up the " + state.objects[obj].form,
-//           "p");
-//
-// if (pickstack < state.stacks.length-1) {
-//     // Then move to the rightmost stack
-//     plan.push("Moving as far right as possible");
-//     for (var i = pickstack; i < state.stacks.length-1; i++) {
-//         plan.push("r");
-//     }
-//
-//     // Then move back
-//     plan.push("Moving back");
-//     for (var i = state.stacks.length-1; i > pickstack; i--) {
-//         plan.push("l");
-//     }
-// }
-//
-// // Finally put it down again
-// plan.push("Dropping the " + state.objects[obj].form,
-//           "d");
-//
-// return plan;
