@@ -245,7 +245,7 @@ module Interpreter {
                 descrString += existingObjects[candidateID].definition.color + " ";
                 descrString += existingObjects[candidateID].definition.form;
                 if (descriptionLookUp.containsKey(descrString)) {
-                    throw new Error("The description " + descrString + " is ambiguous. Specify, Bitch.");
+                    throw new Error("The description " + descrString + " is ambiguous. Please specify.");
                 }
                 descriptionLookUp.setValue(descrString, candidateID);
                 candidateSet.add(candidateID);
