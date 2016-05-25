@@ -66,17 +66,13 @@ module Shrdlite {
 
         // Interpretation
         try {
-            var interpretations : Interpreter.InterpretationResult[] = Interpreter.interpret(parses, world.currentState);
+            var interpretations : Interpreter.InterpretationResult[] = Interpreter.interpret(parses, world.currentState, world);
             world.printDebugInfo("Found " + interpretations.length + " interpretations");
             interpretations.forEach((result, n) => {
                 world.printDebugInfo("  (" + n + ") " + Interpreter.stringify(result));
             });
 
             if (interpretations.length > 1) {
-              //switch (){
-              //  case "the ":
-              //  case "a
-              //}
                 // several interpretations were found -- how should this be handled?
                 // should we throw an ambiguity error?
                 // ... throw new Error("Ambiguous utterance");
