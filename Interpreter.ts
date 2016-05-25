@@ -215,54 +215,51 @@ module Interpreter {
         console.log("Interpretation", interpretation);
 
         if ((cmd.entity.quantifier == "the") && interpretation.length > 1) {
-        askForClarification(interpretation,0,existingObjects);
-
-
-
-          }
-
-        if ((cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
-            // TODO: disambiguation of the second quantifier
+            askForClarification(interpretation, 0, existingObjects);
         }
 
+        if ((cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
+            askForClarification(interpretation, 1, existingObjects);
+        }
+        
         if( interpretation.length == 0){
-         throw new Error("No interpretation found");
-       }
+            throw new Error("No interpretation found");
+        }
 
-          return interpretation;
+        return interpretation;
 
     }
 
     function askForClarification(interpretation :DNFFormula, column,existingObjects:ObjectDict){
-      var candidateSet = new collections.Set<string>();
-      var descriptionLookUp = new collections.Dictionary<string, string>();
+        var candidateSet = new collections.Set<string>();
+        var descriptionLookUp = new collections.Dictionary<string, string>();
 
-      for (var conj of interpretation) {
-          var firstLiteral : Literal;
-          var candidateID : string;
-          firstLiteral = conj[0];
-          candidateID = firstLiteral.args[column];
-          if (!candidateSet.contains(candidateID)) {
-              var descrString : string = "the ";
-              descrString += existingObjects[candidateID].definition.size + " ";
-              descrString += existingObjects[candidateID].definition.color + " ";
-              descrString += existingObjects[candidateID].definition.form;
-              descriptionLookUp.setValue(descrString, candidateID);
-              candidateSet.add(candidateID);
-          }
-      }
+        for (var conj of interpretation) {
+            var firstLiteral : Literal;
+            var candidateID : string;
+            firstLiteral = conj[0];
+            candidateID = firstLiteral.args[column];
+            if (!candidateSet.contains(candidateID)) {
+                var descrString : string = "the ";
+                descrString += existingObjects[candidateID].definition.size + " ";
+                descrString += existingObjects[candidateID].definition.color + " ";
+                descrString += existingObjects[candidateID].definition.form;
+                descriptionLookUp.setValue(descrString, candidateID);
+                candidateSet.add(candidateID);
+            }
+        }
 
         var userQuestion : string = "Did you mean ";
         var firstTime : boolean = true;
         for (var desc of descriptionLookUp.keys()){
             if (!firstTime) {
                 userQuestion += ", or "
-              }
+            }
             userQuestion += desc;
             firstTime = false;
         }
         throw new Error(userQuestion);
-      }
+    }
 
 
     /**
