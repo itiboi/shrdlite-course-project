@@ -90,8 +90,8 @@ module Planner {
             new WorldStateGraph(state.objects),
             startNode,
             (n) => isGoal(n, interpretation, state.objects),
-            (n) => heuristic(startNode, interpretation, state.objects),
-            2 // TODO?
+            (n) => heuristic(n, interpretation, state.objects),
+            3 // TODO?
         )
 
         // Create instruction set from world states
