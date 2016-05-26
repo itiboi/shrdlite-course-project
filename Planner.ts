@@ -91,7 +91,7 @@ module Planner {
             startNode,
             (n) => isGoal(n, interpretation, state.objects),
             (n) => heuristic(n, interpretation, state.objects),
-            3 // TODO?
+            1 // TODO?
         )
 
         // Check for timeout
@@ -115,6 +115,13 @@ module Planner {
             for (var literal of conj) {
                 var objs = literal.args.map((o) => getObjectFromWorldState(state, o, objects));
                 var h : number = 0;
+
+                // Check if relation already satisfied
+                if(Physics.hasValidLocation(objs[0], literal.relation, objs[1])) {
+                    litHeuristic.push(0);
+                    continue;
+                }
+
                 switch (literal.relation) {
                     case "beside":
                     case "rightof":
@@ -122,11 +129,11 @@ module Planner {
                         var above_0: number = 0;
                         var above_1: number = 0;
                         if (!objs[0].held) {
-                            above_0 = state.stacks[objs[0].stackId].length - objs[0].stackLocation;
+                            above_0 = state.stacks[objs[0].stackId].length - objs[0].stackLocation - 1;
                             h += 1;
                         }
                         if (!objs[1].held) {
-                            above_1 = state.stacks[objs[1].stackId].length - objs[1].stackLocation;
+                            above_1 = state.stacks[objs[1].stackId].length - objs[1].stackLocation - 1;
                             h += 1;
                         }
                         h += 2 * Math.min(above_0, above_1);
@@ -137,7 +144,7 @@ module Planner {
                         var stack_1 = objs[1].stackId;
                         if (!objs[0].held) {
                             // Number of object on top of target object to put way
-                            h += 2 * (state.stacks[objs[0].stackId].length - objs[0].stackLocation);
+                            h += 2 * (state.stacks[objs[0].stackId].length - objs[0].stackLocation - 1);
                             // Taking and dropping it
                             h += 2;
                         }
@@ -153,7 +160,7 @@ module Planner {
                             }
                             else {
                                 // Number of object on top of goal object to put way
-                                h += 2 * (state.stacks[objs[1].stackId].length - objs[1].stackLocation);
+                                h += 2 * (state.stacks[objs[1].stackId].length - objs[1].stackLocation - 1);
                             }
                         }
                         else {
@@ -165,7 +172,7 @@ module Planner {
                     case "under":
                         if (!objs[1].held) {
                             // Number of object on top of target object to put way
-                        h += 2 * (state.stacks[objs[1].stackId].length - objs[1].stackLocation);
+                            h += 2 * (state.stacks[objs[1].stackId].length - objs[1].stackLocation - 1);
                             // Taking and dropping it
                             h += 2;
                         }
@@ -183,7 +190,7 @@ module Planner {
                     case "above":
                         if (!objs[0].held) {
                             // Number of object on top of target object to put way
-                            h += 2 * (state.stacks[objs[0].stackId].length - objs[0].stackLocation);
+                            h += 2 * (state.stacks[objs[0].stackId].length - objs[0].stackLocation - 1);
                             // Taking and dropping it
                             h += 2;
                         }
@@ -201,7 +208,7 @@ module Planner {
                     case "holding":
                         if (!objs[0].held) {
                             // Number of object on top of target object to put way
-                            h += 2 * (state.stacks[objs[0].stackId].length - objs[0].stackLocation);
+                            h += 2 * (state.stacks[objs[0].stackId].length - objs[0].stackLocation - 1);
                             // Taking it
                             h += 1;
                         }
