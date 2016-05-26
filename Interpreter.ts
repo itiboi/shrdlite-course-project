@@ -114,11 +114,13 @@ module Interpreter {
         main: string[];
         relation : string;
         nested: Candidates;
+        nested2: Candidates;
 
-        constructor(main: string[], relation : string, nested: Candidates){
+        constructor(main: string[], relation : string, nested: Candidates, nested2: Candidates){
             this.main = main;
             this.relation = relation;
             this.nested = nested;
+            this.nested2 = nested2;
         }
     }
 
@@ -256,25 +258,25 @@ module Interpreter {
 
         switch(relation) {
             case "leftof":
-                return true;
+            return true;
             case "rightof":
-                return true;
+            return true;
             case "inside":
-                if(c2.definition.size == "small" && c1.definition.size == "large") {
-                    return false;
-                }
-                return c2.definition.form == "box";
-            case "ontop":
-                return Physics.isStackingAllowedByPhysics(c1.definition, c2.definition);
-            case "under":
-                return true;
-            case "beside":
-                return true;
-            case "above":
-                return true;
-            default:
-                console.warn("Unknown relation received:", relation);
+            if(c2.definition.size == "small" && c1.definition.size == "large") {
                 return false;
+            }
+            return c2.definition.form == "box";
+            case "ontop":
+            return Physics.isStackingAllowedByPhysics(c1.definition, c2.definition);
+            case "under":
+            return true;
+            case "beside":
+            return true;
+            case "above":
+            return true;
+            default:
+            console.warn("Unknown relation received:", relation);
+            return false;
         }
     }
 
@@ -318,11 +320,15 @@ module Interpreter {
         var rootObject: Parser.Object = entity.object;
         var relation : string = undefined;
         var nestedCandidates : Candidates = undefined;
+        var nestedCandidates2 : Candidates = undefined;
 
         // Unpack object if we have a location relationship here
         if (rootObject.object != undefined) {
             relation = rootObject.location.relation;
-            var nestedCandidates = filterCandidate(rootObject.location.entity,objects);
+            nestedCandidates = filterCandidate(rootObject.location.entity,objects);
+            if (relation === "between") {
+                nestedCandidates2 = filterCandidate(rootObject.location.entity2, objects);
+            }
             rootObject = rootObject.object;
         }
 
@@ -336,17 +342,31 @@ module Interpreter {
                 }
                 // Check whether one relation satisfying candidate exist
                 else {
-                    for (var nested of nestedCandidates.main) {
-                        if (Physics.hasValidLocation(objects[name],relation,objects[nested])) {
-                            objCandidates.push(name);
-                            break;
+                    if (relation === "between"){
+                        for (var nested of nestedCandidates.main) {
+                            for (var nested2 of nestedCandidates2.main){
+                                if ((Physics.hasValidLocation(objects[name],"leftof",objects[nested])
+                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested2])) ||
+                                (Physics.hasValidLocation(objects[name],"leftof",objects[nested2])
+                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested]))) {
+                                    objCandidates.push(name);
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        for (var nested of nestedCandidates.main) {
+                            if (Physics.hasValidLocation(objects[name],relation,objects[nested])) {
+                                objCandidates.push(name);
+                                break;
+                            }
                         }
                     }
                 }
             }
         }
 
-        return new Candidates(objCandidates, relation, nestedCandidates);
+        return new Candidates(objCandidates, relation, nestedCandidates, nestedCandidates2);
     }
 
     /**
