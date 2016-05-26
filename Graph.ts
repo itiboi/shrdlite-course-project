@@ -110,7 +110,7 @@ function aStarSearch<Node> (
 
         var costOfCurrent = cost.getValue(current);
         for(var edge of graph.outgoingEdges(current)){
-            console.log("- ", edge.to.toString(), "with heuristic", heuristics(edge.to));
+            console.log("- ", edge.to.toString(), "with heuristic", heuristics(edge.to), " and cost", costOfCurrent);
             var neighbour = edge.to;
             if (visited.contains(neighbour)){
                 continue;

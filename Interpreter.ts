@@ -166,7 +166,6 @@ module Interpreter {
         for (var target of mainCandidates.main) {
           for (var goal of goalLocationCandidates.main) {
             if (isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
-
               interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target,goal]}]);
             }
           }
@@ -196,6 +195,7 @@ module Interpreter {
     }
 
     if (interpretation.length == 0) {
+      console.log("Could not find valid interpretation in world");
       throw new Error("Sentence has no valid interpretation in world");
     }
     return interpretation;

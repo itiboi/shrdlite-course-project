@@ -94,6 +94,11 @@ module Planner {
             3 // TODO?
         )
 
+        // Check for timeout
+        if(result.path.length == 0) {
+            throw new Error("Search for goal timed out!");
+        }
+
         // Create instruction set from world states
         console.log("Found solution path, generating instructions");
         return createInstructions(state.arm, result, state.objects);
@@ -227,15 +232,15 @@ module Planner {
                 // Check if the literal is valid given the polarity and the location of object
                 var object1 = getObjectFromWorldState(node, literal.args[0], objects);
                 var object2 = getObjectFromWorldState(node, literal.args[1], objects);
-                console.log("literals:", literal.args.join(", "), " rel:", literal.relation);
-                console.log("ob1:", object1);
-                console.log("ob2:", object2);
+                //console.log("literals:", literal.args.join(", "), " rel:", literal.relation);
+                //console.log("ob1:", object1);
+                //console.log("ob2:", object2);
                 if (!Physics.hasValidLocation(object1, literal.relation, object2)){
-                  console.log("false")
+                  //console.log("false")
                   feasible = false;
                   break;
                 }
-                console.log("true");
+                //console.log("true");
             }
 
             if (feasible) {
