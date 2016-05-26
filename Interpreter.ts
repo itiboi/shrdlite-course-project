@@ -201,7 +201,10 @@ module Interpreter {
                         interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
                                              {polarity: true, relation: "rightof", args: [target, othergoal]}]);
                   }
-                  //TODO check other way around
+                  if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
+                        interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
+                                             {polarity: true, relation: "rightof", args: [target, goal]}]);
+                  }
                 }
               }
               else{(Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal]))
@@ -211,19 +214,20 @@ module Interpreter {
             break;
         }
 
+
         if (interpretation.length == 0) {
             console.log("Could not find valid interpretation in world");
             throw new Error("Sentence has no valid interpretation in world");
         }
 
-        if ((cmd.entity.quantifier == "the") && interpretation.length > 1) {
+        if (cmd.entity.quantifier == "the" && interpretation.length > 1) {
             askForClarification(interpretation, 0, existingObjects);
         }
-
-        if ((cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
+        console.log("here",interpretation);
+        if ((cmd.location!== undefined && cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
             askForClarification(interpretation, 1, existingObjects);
         }
-
+        console.log("interpretation",interpretation);
         return interpretation;
     }
 
