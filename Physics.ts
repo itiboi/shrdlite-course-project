@@ -130,7 +130,7 @@ module Physics {
   */
 
 export function isValidBetweenLocation (goal1: Physics.FoundObject, target:Physics.FoundObject,goal2:Physics.FoundObject) : boolean{
-  return isValidGoalLocation(goal1, "leftof",target) && isValidGoalLocation (target,"rightof",goal2);
+  return isValidGoalLocation(goal1, "leftof",target) && isValidGoalLocation (goal2,"rightof",target);
 }
 
   export function isValidGoalLocation(c1: Physics.FoundObject, relation: string, c2: Physics.FoundObject): boolean{
