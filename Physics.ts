@@ -42,9 +42,9 @@ module Physics {
   export function hasValidLocation(c1: FoundObject, relation: string, c2: FoundObject): boolean {
     switch(relation) {
       case "leftof":
-        return c1.stackId == (c2.stackId - 1);
+        return c1.stackId < c2.stackId;
       case "rightof":
-        return (c1.stackId - 1) == c2.stackId;
+        return c1.stackId > c2.stackId;
       case "inside":
         // Objects are “inside” boxes, but “ontop” of other objects
         // AND Small objects cannot support large objects.
@@ -66,7 +66,7 @@ module Physics {
       case "beside":
         return hasValidLocation(c1, "leftof", c2) || hasValidLocation(c1, "rightof", c2);
       case "above":
-        return c1.stackId == c2.stackId && c1.stackLocation  > c2.stackLocation;
+        return c1.stackId == c2.stackId && c1.stackLocation > c2.stackLocation;
       case "holding":
         return c1.held;
     }
