@@ -40,7 +40,12 @@ module Physics {
   * Check if two objects are correctly related and satisfy physical laws
   */
   export function hasValidLocation(c1: FoundObject, relation: string, c2: FoundObject): boolean {
-    switch(relation) {
+    // Held object can only satisfy holding relation
+    if (relation != "holding" && (c1.held || c2.held)) {
+      return false;
+    }
+
+    switch (relation) {
       case "leftof":
         return c1.stackId < c2.stackId;
       case "rightof":
