@@ -70,7 +70,7 @@ relation --> ("beside")                  {% R("beside") %}
 relation --> ("above")                   {% R("above") %}
 relation --> ("just" "left" "of" | "just" "to" "the" "left" "of") {% R("justleftof") %}
 relation --> ("just" "right" "of" | "just" "to" "the" "right" "of") {% R("justrightof") %}
-between --> ("between")                  {% R("between ") %}
+between --> ("between")                  {% R("between") %}
 
 size --> ("small" | "tiny")  {% R("small") %}
 size --> ("large" | "big")   {% R("large") %}

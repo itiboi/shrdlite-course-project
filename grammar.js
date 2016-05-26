@@ -145,7 +145,7 @@ var grammar = {
     {"name": "relation", "symbols": ["relation$subexpression$9"], "postprocess": R("justrightof")},
     {"name": "between$subexpression$1$string$1", "symbols": [{"literal":"b"}, {"literal":"e"}, {"literal":"t"}, {"literal":"w"}, {"literal":"e"}, {"literal":"e"}, {"literal":"n"}], "postprocess": function joiner(d) {return d.join('');}},
     {"name": "between$subexpression$1", "symbols": ["between$subexpression$1$string$1"]},
-    {"name": "between", "symbols": ["between$subexpression$1"], "postprocess": R("between ")},
+    {"name": "between", "symbols": ["between$subexpression$1"], "postprocess": R("between")},
     {"name": "size$subexpression$1$string$1", "symbols": [{"literal":"s"}, {"literal":"m"}, {"literal":"a"}, {"literal":"l"}, {"literal":"l"}], "postprocess": function joiner(d) {return d.join('');}},
     {"name": "size$subexpression$1", "symbols": ["size$subexpression$1$string$1"]},
     {"name": "size$subexpression$1$string$2", "symbols": [{"literal":"t"}, {"literal":"i"}, {"literal":"n"}, {"literal":"y"}], "postprocess": function joiner(d) {return d.join('');}},
