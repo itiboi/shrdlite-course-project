@@ -102,29 +102,109 @@ module Planner {
     function heuristic(
         state: WorldStateNode, goal: Interpreter.DNFFormula, objects: { [s: string]: ObjectDefinition }): number {
         var conjHeuristic: number[] = [];
-        return 0;
-        /*
+
         // Loop over conjunctions
         for (var conj of goal) {
             // Loop over literals
             var litHeuristic: number[] = [];
             for (var literal of conj) {
-                // For each literal: 2 + aboveStart*2 + aboveFinal*2
                 var objs = literal.args.map((o) => getObjectFromWorldState(state, o, objects));
+                var h : number = 0;
                 switch (literal.relation) {
-                    case "leftof":
-                        
+                    case "beside":
                     case "rightof":
+                    case "leftof":
+                        var above_0: number = 0;
+                        var above_1: number = 0;
+                        if (!objs[0].held) {
+                            above_0 = state.stacks[objs[0].stackId].length - objs[0].stackLocation;
+                            h += 1;
+                        }
+                        if (!objs[1].held) {
+                            above_1 = state.stacks[objs[1].stackId].length - objs[1].stackLocation;
+                            h += 1;
+                        }
+                        h += 2 * Math.min(above_0, above_1);
+                        break;
 
                     case "inside":
                     case "ontop":
-                        
+                        var stack_1 = objs[1].stackId;
+                        if (!objs[0].held) {
+                            // Number of object on top of target object to put way
+                            h += 2 * (state.stacks[objs[0].stackId].length - objs[0].stackLocation);
+                            // Taking and dropping it
+                            h += 2;
+                        }
+                        else {
+                            // Only dropping it
+                            h += 1;
+                        }
+
+                        if (!objs[1].held) {
+                            if (objs[1].floor) {
+                                // Minimum number of object on the floor
+                                h += 2 * Math.min(...state.stacks.map((n) => (n.length)));
+                            }
+                            else {
+                                // Number of object on top of goal object to put way
+                                h += 2 * (state.stacks[objs[1].stackId].length - objs[1].stackLocation);
+                            }
+                        }
+                        else {
+                            // Dropping it before
+                            h += 1;
+                        }
+                        break;
+
                     case "under":
-                        
-                    case "beside":
-                        
+                        if (!objs[1].held) {
+                            // Number of object on top of target object to put way
+                        h += 2 * (state.stacks[objs[1].stackId].length - objs[1].stackLocation);
+                            // Taking and dropping it
+                            h += 2;
+                        }
+                        else {
+                            // Only dropping it
+                            h += 1;
+                        }
+
+                        if (objs[0].held) {
+                            // Dropping goal before putting something on top
+                            h += 1;
+                        }
+                        break;
+
                     case "above":
-                        
+                        if (!objs[0].held) {
+                            // Number of object on top of target object to put way
+                            h += 2 * (state.stacks[objs[0].stackId].length - objs[0].stackLocation);
+                            // Taking and dropping it
+                            h += 2;
+                        }
+                        else {
+                            // Only dropping it
+                            h += 1;
+                        }
+
+                        if (objs[1].held) {
+                            // Dropping goal before putting something on top
+                            h += 1;
+                        }
+                        break;
+
+                    case "holding":
+                        if (!objs[0].held) {
+                            // Number of object on top of target object to put way
+                            h += 2 * (state.stacks[objs[0].stackId].length - objs[0].stackLocation);
+                            // Taking it
+                            h += 1;
+                        }
+                        break;
+
+                    default:
+                        console.warn("Unknown relation received:", literal.relation);
+                        break;
                 }
             }
 
@@ -134,7 +214,6 @@ module Planner {
 
         // Take minimum
         return Math.min(...conjHeuristic);
-        */
     }
 
     function isGoal(

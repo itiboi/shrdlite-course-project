@@ -69,10 +69,10 @@ module Physics {
         return c1.stackId == c2.stackId && c1.stackLocation > c2.stackLocation;
       case "holding":
         return c1.held;
+      default:
+        console.warn("Unknown relation received:", relation);
+        return false;
     }
-
-    console.warn("Unknown relation received:", relation);
-    return false;
   }
 
   /**
