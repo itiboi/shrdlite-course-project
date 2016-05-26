@@ -83,7 +83,18 @@ module Shrdlite {
         }
         catch(err) {
             console.log("catching?");
-            world.printError("Interpretation error", err);
+            var stringErr : string = String(err);
+            var keyString :string = "[ambiguity]";
+            var idxKey : number = stringErr.search(keyString);
+            if(idxKey != -1){
+                world.printError("An ambiguity exists, did you mean :");
+                stringErr.substring(idxKey+keyString.length-1,stringErr.length).split(",").map(
+                    (message:string) => {
+                        world.printError("-> "+message+"?");
+                    });
+            }else{
+                world.printError("Interpretation error", err);
+            }
             return;
         }
 

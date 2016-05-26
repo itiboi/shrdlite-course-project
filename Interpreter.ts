@@ -233,16 +233,15 @@ module Interpreter {
             }
         }
 
-        var userQuestion : string = "Did you mean ";
+        var userQuestion : string = "[ambiguity]";
         var firstTime : boolean = true;
         for (var desc of descriptionLookUp.keys()){
             if (!firstTime) {
-                userQuestion += ", or "
+                userQuestion += ","
             }
             userQuestion += desc;
             firstTime = false;
         }
-        userQuestion += "?";
         throw new Error(userQuestion);
     }
 
