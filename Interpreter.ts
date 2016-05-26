@@ -242,6 +242,7 @@ module Interpreter {
             userQuestion += desc;
             firstTime = false;
         }
+        userQuestion += "?";
         throw new Error(userQuestion);
     }
 
