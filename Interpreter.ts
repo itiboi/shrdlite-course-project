@@ -154,12 +154,17 @@ module Interpreter {
         if (cmd.command != "put") {
             mainCandidates = filterCandidate(cmd.entity, existingObjects);
         }
+
         console.log("Main", mainCandidates);
 
         // Get candidates for optional location (for move and put)
         var goalLocationCandidates: Candidates = undefined;
+        var betweenSecondLocationCandidates : Candidates = undefined;
         if (cmd.location !== undefined) {
             goalLocationCandidates = filterCandidate(cmd.location.entity, existingObjects);
+            if(cmd.location.relation === "between"){
+              betweenSecondLocationCandidates = filterCandidate(cmd.location.entity2,existingObjects);
+            }
         }
         console.log("Goal", goalLocationCandidates);
 
@@ -168,7 +173,7 @@ module Interpreter {
             // Add every feasible combination of target and goal as interpretation
             for (var target of mainCandidates.main) {
                 for (var goal of goalLocationCandidates.main) {
-                    if (isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
+                    if (Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
                         interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target,goal]}]);
                     }
                 }
@@ -190,9 +195,18 @@ module Interpreter {
             // Add all feasible goals as interpretation
             var target = state.holding;
             for (var goal of goalLocationCandidates.main) {
-                if (isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])) {
-                    interpretation.push([{ polarity: true, relation: cmd.location.relation, args: [target, goal] }]);
+              if(cmd.location.relation === "between"){
+                for(var othergoal of betweenSecondLocationCandidates.main){
+                  if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
+                        interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
+                                             {polarity: true, relation: "rightof", args: [target, othergoal]}]);
+                  }
+                  //TODO check other way around
                 }
+              }
+              else{(Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal]))
+                    interpretation.push([{ polarity: true, relation: cmd.location.relation, args: [target, goal] }]);
+              }
             }
             break;
         }
@@ -248,37 +262,6 @@ module Interpreter {
         throw new Error(userQuestion);
     }
 
-    /**
-    * Check whether given relation is in general feasible considering physical laws.
-    */
-    function isValidGoalLocation(c1: Physics.FoundObject, relation: string, c2: Physics.FoundObject): boolean{
-        if(c1==c2) {
-            return false;
-        }
-
-        switch(relation) {
-            case "leftof":
-            return true;
-            case "rightof":
-            return true;
-            case "inside":
-            if(c2.definition.size == "small" && c1.definition.size == "large") {
-                return false;
-            }
-            return c2.definition.form == "box";
-            case "ontop":
-            return Physics.isStackingAllowedByPhysics(c1.definition, c2.definition);
-            case "under":
-            return true;
-            case "beside":
-            return true;
-            case "above":
-            return true;
-            default:
-            console.warn("Unknown relation received:", relation);
-            return false;
-        }
-    }
 
     /**
     * Filters out all objects which don't exist in world state.
