@@ -206,6 +206,8 @@ module Planner {
                         console.warn("Unknown relation received:", literal.relation);
                         break;
                 }
+
+                litHeuristic.push(h);
             }
 
             // Take maximum
@@ -322,7 +324,6 @@ module Planner {
                     edge.to = new WorldStateNode(obj, newStacks);
                     edge.cost = 1;
                     edges.push(edge);
-                    console.log("- ", edge.to.toString());
                 }
             }
             else {
@@ -347,7 +348,6 @@ module Planner {
                     edge.to = new WorldStateNode(null, newStacks);
                     edge.cost = 1;
                     edges.push(edge);
-                    console.log("- ", edge.to.toString());
                 }
             }
 
@@ -421,6 +421,7 @@ module Planner {
         }
 
         console.log("Generated instructions are:", instructions.join(", "));
+        console.log("Length of instructions is:", instructions.filter((c) => (c.length == 1)).length);
         return instructions;
     }
 

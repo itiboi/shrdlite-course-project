@@ -55,8 +55,8 @@ function aStarSearch<Node> (
     heuristics : (n:Node) => number,
     timeout : number
 ) : SearchResult<Node> {
-    // A dummy search result: it just picks the first possible neighbour
-    var result : SearchResult<Node> = {
+    var time : number = new Date().getTime();
+    var result: SearchResult<Node> = {
         path: [],
         cost: 0
     };
@@ -110,8 +110,9 @@ function aStarSearch<Node> (
 
         var costOfCurrent = cost.getValue(current);
         for(var edge of graph.outgoingEdges(current)){
+            console.log("- ", edge.to.toString(), "with heuristic", heuristics(edge.to));
             var neighbour = edge.to;
-            if(visited.contains(neighbour)){
+            if (visited.contains(neighbour)){
                 continue;
             }
 
@@ -129,5 +130,6 @@ function aStarSearch<Node> (
         }
     }
 
+    console.log("Finding the result took: ", new Date().getTime() - time);
     return result;
 }
