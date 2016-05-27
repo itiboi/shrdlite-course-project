@@ -156,7 +156,7 @@ module Interpreter {
             mainCandidates = filterCandidate(cmd.entity, existingObjects);
         }
 
-        console.log("Main", mainCandidates);
+        console.log("Main objects", mainCandidates);
 
         // Get candidates for optional location (for move and put)
         var goalLocationCandidates: Candidates = undefined;
@@ -164,68 +164,69 @@ module Interpreter {
         if (cmd.location !== undefined) {
             goalLocationCandidates = filterCandidate(cmd.location.entity, existingObjects);
             if(cmd.location.relation === "between"){
-              betweenSecondLocationCandidates = filterCandidate(cmd.location.entity2,existingObjects);
-              console.log("Other goal",betweenSecondLocationCandidates);
+                betweenSecondLocationCandidates = filterCandidate(cmd.location.entity2,existingObjects);
             }
         }
-        console.log("Goal", goalLocationCandidates);
+        console.log("Goal objects", goalLocationCandidates);
+        console.log("Second goal objects", betweenSecondLocationCandidates);
 
         switch (cmd.command) {
             case "move":
-            // Add every feasible combination of target and goal as interpretation
-            for (var target of mainCandidates.main) {
-                for (var goal of goalLocationCandidates.main) {
-                  if(cmd.location.relation === "between"){
-                    for(var otherGoal of betweenSecondLocationCandidates.main){
-                      interpretation = buildBetweenConj(goal,target,otherGoal,existingObjects,interpretation);
+                // Add every feasible combination of target and goal as interpretation
+                for (var target of mainCandidates.main) {
+                    for (var goal of goalLocationCandidates.main) {
+                        if(cmd.location.relation === "between"){
+                            for(var otherGoal of betweenSecondLocationCandidates.main){
+                                interpretation = buildBetweenConj(goal,target,otherGoal,existingObjects,interpretation);
+                            }
+                        }
+                        else {
+                            if (Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
+                                interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target,goal]}]);
+                            }
+                        }
                     }
-                  }
-                  else{
-                    if (Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
-                        interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target,goal]}]);
-                    }
-                  }
                 }
-            }
 
-            break;
-            case "take":
-            for (var target of mainCandidates.main) {
-                if (target != "floor") {
-                    interpretation.push([{polarity: true, relation: "holding", args: [target]}]);
-                }
-            }
-            break;
-            case "put":
-            // Sanity check whether we are actually holding something
-            if(state.holding == null) {
                 break;
-            }
-            console.log("INSIDE PUT");
-            // Add all feasible goals as interpretation
-            var target = state.holding;
-            for (var goal of goalLocationCandidates.main) {
-              if(cmd.location.relation === "between"){
-                for(var othergoal of betweenSecondLocationCandidates.main){
-                  console.log("goal",existingObjects[goal]);
-                  console.log("othergoal",existingObjects[othergoal]);
-                  if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
-                        console.log("passed the physics");
-                        interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
-                                             {polarity: true, relation: "rightof", args: [target, othergoal]}]);
-                  }
-                  if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
-                        console.log("passed the physics");
-                        interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
-                                             {polarity: true, relation: "rightof", args: [target, goal]}]);
-                  }
+            case "take":
+                for (var target of mainCandidates.main) {
+                    if (target != "floor") {
+                        interpretation.push([{polarity: true, relation: "holding", args: [target]}]);
+                    }
                 }
-              }
-              else{(Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal]))
-                    interpretation.push([{ polarity: true, relation: cmd.location.relation, args: [target, goal] }]);
-              }
-            }
-            break;
+                break;
+            case "put":
+                // Sanity check whether we are actually holding something
+                if(state.holding == null) {
+                    break;
+                }
+                //console.log("INSIDE PUT");
+                // Add all feasible goals as interpretation
+                var target = state.holding;
+                for (var goal of goalLocationCandidates.main) {
+                    if(cmd.location.relation === "between"){
+                        for(var othergoal of betweenSecondLocationCandidates.main){
+                            console.log("goal",existingObjects[goal]);
+                            console.log("othergoal",existingObjects[othergoal]);
+                            if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
+                                console.log("passed the physics");
+                                interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
+                                                     {polarity: true, relation: "rightof", args: [target, othergoal]}]);
+                            }
+                            if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
+                                console.log("passed the physics");
+                                interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
+                                                     {polarity: true, relation: "rightof", args: [target, goal]}]);
+                            }
+                        }
+                    }
+                    else{(Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal]))
+                        interpretation.push([{ polarity: true, relation: cmd.location.relation, args: [target, goal] }]);
+                    }
+                }
+
+                break;
         }
 
 
@@ -237,28 +238,28 @@ module Interpreter {
         if (cmd.entity.quantifier == "the" && interpretation.length > 1) {
             askForClarification(interpretation, 0, existingObjects);
         }
-        console.log("here",interpretation);
+
         if ((cmd.location!== undefined && cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
             askForClarification(interpretation, 1, existingObjects);
         }
-        console.log("interpretation",interpretation);
+
         return interpretation;
     }
 
 
     function buildBetweenConj (goal:string, target:string,othergoal: string, existingObjects:ObjectDict,interpretation:DNFFormula) : DNFFormula {
 
-          if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
-                console.log("passed the physics");
-                interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
-                                     {polarity: true, relation: "rightof", args: [target, othergoal]}]);
-          }
-          if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
-                console.log("passed the physics");
-                interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
-                                     {polarity: true, relation: "rightof", args: [target, goal]}]);
-          }
-          console.log("conj",interpretation);
+        if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
+            console.log("passed the physics");
+            interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
+                                {polarity: true, relation: "rightof", args: [target, othergoal]}]);
+        }
+        if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
+            console.log("passed the physics");
+            interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
+                                {polarity: true, relation: "rightof", args: [target, goal]}]);
+        }
+        console.log("conj",interpretation);
         return interpretation;
     }
 
