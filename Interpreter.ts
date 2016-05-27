@@ -273,7 +273,7 @@ module Interpreter {
             firstLiteral = conj[0];
             candidateID = firstLiteral.args[column];
             if (!candidateSet.contains(candidateID)) {
-                var descrString : string = "The ";
+                var descrString : string = "the ";
                 descrString += existingObjects[candidateID].definition.size + " ";
                 descrString += existingObjects[candidateID].definition.color + " ";
                 descrString += existingObjects[candidateID].definition.form;
@@ -289,7 +289,7 @@ module Interpreter {
             return;
         }
 
-        var userQuestion : string = "[ambiguity]";
+        var userQuestion: string = "[ambiguity]";
         var firstTime : boolean = true;
         for (var desc of descriptionLookUp.keys()){
             if (!firstTime) {

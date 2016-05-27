@@ -85,7 +85,7 @@ module Shrdlite {
             //console.log("catching?");
             var stringErr : string = err.message;
             var keyString :string = "[ambiguity]";
-            var idxKey : number = stringErr.search(keyString);
+            var idxKey : number = stringErr.indexOf(keyString);
             if(idxKey != -1){
                 world.printError("An ambiguity exists, did you mean :");
                 stringErr.replace(keyString, "").split("|").map(
@@ -127,18 +127,18 @@ module Shrdlite {
     }
 
     export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
-        var userQuestion : string = "Did you mean ";
+        var userQuestion: string = "[ambiguity]";
         var firstTime : boolean = true;
         var erstesMal : boolean = true;
         var forstaGang : boolean = true;
         for(var dnf of interpretations){
             if (!forstaGang) {
-                userQuestion+= "? Or did you mean ";
+                userQuestion+= "|";
             }
             erstesMal = true;
             for(var conjList of dnf.interpretation){
                 if (!erstesMal) {
-                    userQuestion+= " or ";
+                    userQuestion+= "|";
                 }
                 firstTime = true;
                 for(var conj of conjList){
@@ -154,7 +154,6 @@ module Shrdlite {
             }
             forstaGang = false;
         }
-        userQuestion+="?";
         throw new Error(userQuestion);
     }
 
