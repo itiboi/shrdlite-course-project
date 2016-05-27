@@ -251,6 +251,12 @@ module Interpreter {
             }
         }
 
+        if (cmd.location !== undefined && cmd.location.relation === "between" && cmd.location.entity2.quantifier === "the") {
+            if (interpretation.length > 2) {
+                askForClarification(interpretation, 0, existingObjects);
+            }
+        }
+
         // if ((cmd.location!== undefined && cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
         //     console.log(goalLocationCandidates);
         //     askForClarification(interpretation, 1, existingObjects);
