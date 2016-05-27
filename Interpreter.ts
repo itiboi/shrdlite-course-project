@@ -235,13 +235,26 @@ module Interpreter {
             throw new Error("Sentence has no valid interpretation in world");
         }
 
-        if (cmd.entity !== undefined && (cmd.entity.quantifier == "the" && interpretation.length > 1)) {
-            askForClarification(interpretation, 0, existingObjects);
+        if (cmd.entity !== undefined && cmd.entity.quantifier === "the") {
+            if (cmd.location !== undefined && cmd.location.relation === "between" && interpretation.length > 2) {
+                askForClarification(interpretation, 0, existingObjects);
+            } else if (interpretation.length > 1) {
+                askForClarification(interpretation, 0, existingObjects);
+            }
         }
 
-        if ((cmd.location!== undefined && cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
-            askForClarification(interpretation, 1, existingObjects);
+        if (cmd.location !== undefined && cmd.location.entity.quantifier === "the") {
+            if (cmd.location.relation === "between" && interpretation.length > 2) {
+                askForClarification(interpretation, 0, existingObjects);
+            } else if (interpretation.length > 1) {
+                askForClarification(interpretation, 0, existingObjects);
+            }
         }
+
+        // if ((cmd.location!== undefined && cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
+        //     console.log(goalLocationCandidates);
+        //     askForClarification(interpretation, 1, existingObjects);
+        // }
 
         return interpretation;
     }
