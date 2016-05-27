@@ -235,7 +235,7 @@ module Interpreter {
             throw new Error("Sentence has no valid interpretation in world");
         }
 
-        if (cmd.entity.quantifier == "the" && interpretation.length > 1) {
+        if (cmd.entity !== undefined && (cmd.entity.quantifier == "the" && interpretation.length > 1)) {
             askForClarification(interpretation, 0, existingObjects);
         }
 
