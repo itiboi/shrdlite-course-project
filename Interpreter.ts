@@ -335,6 +335,22 @@ module Interpreter {
         return existingObjects;
     }
 
+    function generateAllDFN(targets: string[], goals: string[],location:string, existingObjects: ObjectDict) : DNFFormula {
+      var allCombinations : number[][];
+      var allDNF : DNFFormula = [];
+      allCombinations = getCombinations(targets.length, goals.length-1).toArray();
+      for(var perm of allCombinations){
+        var conj : Conjunction = [];
+        for (var i = 0; i < goals.length; i++) {
+          conj.push({polarity : true, relation : location, args : [targets[i], goals[perm[i]]]});
+        }
+        allDNF.push(conj);
+      }
+    return allDNF;
+    }
+
+
+
     /**
     * Find all candidates for given entity.
     */
