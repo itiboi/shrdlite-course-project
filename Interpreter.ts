@@ -284,6 +284,10 @@ module Interpreter {
             }
         }
 
+        if (candidateSet.size() < 2) {
+            return;
+        }
+
         var userQuestion : string = "Did you mean ";
         var firstTime : boolean = true;
         for (var desc of descriptionLookUp.keys()){
