@@ -179,23 +179,23 @@ module Interpreter {
 
         if (cmd.entity !== undefined && cmd.entity.quantifier === "the") {
             if (cmd.location !== undefined && cmd.location.relation === "between" && interpretation.length > 2) {
-                askForClarification(interpretation, 0, existingObjects);
+                throwClarificationError(interpretation, 0, existingObjects);
             } else if (interpretation.length > 1) {
-                askForClarification(interpretation, 0, existingObjects);
+                throwClarificationError(interpretation, 0, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.entity.quantifier === "the") {
             if (cmd.location.relation === "between" && interpretation.length > 2) {
-                askForClarification(interpretation, 0, existingObjects);
+                throwClarificationError(interpretation, 0, existingObjects);
             } else if (interpretation.length > 1) {
-                askForClarification(interpretation, 0, existingObjects);
+                throwClarificationError(interpretation, 0, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.relation === "between" && cmd.location.entity2.quantifier === "the") {
             if (interpretation.length > 2) {
-                askForClarification(interpretation, 0, existingObjects);
+                throwClarificationError(interpretation, 0, existingObjects);
             }
         }
 
@@ -207,7 +207,108 @@ module Interpreter {
         return interpretation;
     }
 
+    //---------------------------------------------------------------------//
+    // Functions for matching objects of parsing to objects of world state //
+    //---------------------------------------------------------------------//
 
+    /**
+    * Filters out all objects which don't exist in world state.
+    * The WorldState.objects property maps all possible identifier to objects,
+    * even those who are not in the given world.
+    */
+    function filterExistingObjects(state: WorldState) : ObjectDict {
+        var existingObjects: ObjectDict = {};
+        for (var name of Object.keys(state.objects)) {
+            var definition: ObjectDefinition = state.objects[name];
+            // Check whether object is held
+            if(state.holding == name) {
+                existingObjects[name] = new Physics.FoundObject(definition, true,  -1, -1,false);
+                continue;
+            }
+
+            // Check whether object exists on stacks
+            for (var i = 0; i < state.stacks.length; i++) {
+                var stack = state.stacks[i];
+                var loc = stack.indexOf(name)
+                if (loc > -1) {
+                    existingObjects[name] = new Physics.FoundObject(definition, false,  i, loc,false);
+                    continue;
+                }
+            }
+        }
+
+        // Floor always exists
+        existingObjects["floor"] = new Physics.FoundObject({form:"floor", size:null, color: null}, false, -1, -1, true);
+
+        return existingObjects;
+    }
+    /**
+    * Find all candidates for given entity.
+    */
+    function filterCandidate(entity: Parser.Entity, objects: ObjectDict): Candidates {
+        var objCandidates: string[] = [];
+        var rootObject: Parser.Object = entity.object;
+        var relation : string = undefined;
+        var nestedCandidates : Candidates = undefined;
+        var nestedCandidates2 : Candidates = undefined;
+
+        // Unpack object if we have a location relationship here
+        if (rootObject.object != undefined) {
+            relation = rootObject.location.relation;
+            nestedCandidates = filterCandidate(rootObject.location.entity,objects);
+            if (relation === "between") {
+                nestedCandidates2 = filterCandidate(rootObject.location.entity2, objects);
+            }
+            rootObject = rootObject.object;
+        }
+
+        // Check now with all available properties
+        for (var name of Object.keys(objects)) {
+            var object = objects[name];
+            var def = object.definition;
+            if (Physics.hasSameAttributes(rootObject, def)) {
+                if(nestedCandidates == undefined) {
+                  console.log("object in hasSameAttributes",name);
+                    objCandidates.push(name);
+                }
+                // Check whether one relation satisfying candidate exist
+                else {
+                    if (relation === "between"){
+                        for (var nested of nestedCandidates.main) {
+                            for (var nested2 of nestedCandidates2.main){
+                                if ((Physics.hasValidLocation(objects[name],"leftof",objects[nested])
+                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested2])) ||
+                                (Physics.hasValidLocation(objects[name],"leftof",objects[nested2])
+                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested]))) {
+                                    objCandidates.push(name);
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        for (var nested of nestedCandidates.main) {
+                            if (Physics.hasValidLocation(objects[name],relation,objects[nested])) {
+                              console.log("object in hasValidLocation",name);
+                                objCandidates.push(name);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return new Candidates(objCandidates, relation, nestedCandidates, nestedCandidates2);
+    }
+
+
+    //-------------------------------------------------------//
+    //  Functions for generating the DNF interpretations     //
+    //-------------------------------------------------------//
+
+    /**
+    * Generate DNF in the general case
+    */
     function generateAnyDNF (cmd : Parser.Command,command:string, mainCandidates:Candidates,
       goalLocationCandidates:Candidates,interpretation:DNFFormula,
       betweenSecondLocationCandidates:Candidates, existingObjects:ObjectDict, state:WorldState) {
@@ -271,25 +372,106 @@ module Interpreter {
       }
     }
 
+    /**
+    * Generate DNF for the all quantifier
+    */
+    function generateAllDNF(targets: string[], goals: string[],location:string, existingObjects: ObjectDict) : DNFFormula {
+        var allCombinations : number[][];
+        var allDNF : DNFFormula = [];
+        allCombinations = getCombinations(targets.length, goals.length-1).toArray();
+        for(var perm of allCombinations) {
+          var conj : Conjunction = [];
+          for (var i = 0; i < goals.length; i++) {
+            conj.push({polarity : true, relation : location, args : [targets[i], goals[perm[i]]]});
+          }
+
+          allDNF.push(conj);
+        }
+        return allDNF;
+    }
 
 
-    function buildBetweenConj (goal:string, target:string,othergoal: string, existingObjects:ObjectDict,interpretation:DNFFormula) : DNFFormula {
+    /**
+    * Building the interpretation for the between relationship
+    * By creating a conjonction of leftof and rightof literal
+    */
+    function buildBetweenConj (
+        goal:string, target:string,othergoal: string, existingObjects:ObjectDict,interpretation:DNFFormula) : DNFFormula {
 
         if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
-            console.log("passed the physics");
+            //console.log("passed the physics");
             interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
                                 {polarity: true, relation: "rightof", args: [target, othergoal]}]);
         }
         if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
-            console.log("passed the physics");
+            //console.log("passed the physics");
             interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
                                 {polarity: true, relation: "rightof", args: [target, goal]}]);
         }
-        console.log("conj",interpretation);
+        //console.log("conj",interpretation);
         return interpretation;
     }
 
-    function askForClarification(interpretation :DNFFormula, column : number,existingObjects:ObjectDict){
+    function addPermutations(a : number[], l: number, r : number, set : collections.Set<number[]>) : void {
+        if (l == r) {
+            set.add(a);
+        }
+        else {
+            for (var i : number = l; i <= r; i++) {
+                var tmp : number;
+                //swap lth and ith
+                tmp = a[l];
+                a[l] = a[i];
+                a[i] = tmp;
+
+                addPermutations(a, l+1, r, set);
+
+                //swap lth and ith
+                tmp = a[l];
+                a[l] = a[i];
+                a[i] = tmp;
+            }
+        }
+    }
+
+    function getPermutations(n : number) : collections.Set<number[]> {
+        var set = new collections.Set<number[]>();
+        var a : number[];
+        for (var i = 0; i < n; i++){
+            a.push(i);
+        }
+        addPermutations(a, 0, a.length-1, set);
+        return set;
+    }
+
+    function addCombinations(a : number[], length : number, highest : number, set : collections.Set<number[]>) : void {
+        if (a.length == length){
+            set.add(a);
+        }
+        else {
+            for (var i = 0; i <= highest; i++) {
+                var b : number[] = a;
+                b.push(i);
+                addCombinations(b, length, highest, set);
+            }
+        }
+    }
+
+    function getCombinations(length : number, highest : number) : collections.Set<number[]> {
+        var res = new collections.Set<number[]>();
+        addCombinations([], length, highest, res);
+        return res;
+    }
+
+    //-------------------------------------------------------//
+    // Functions for ambiguity                               //
+    //-------------------------------------------------------//
+
+
+    /**
+     * Build the clarification question for object ambiguity and throws it.
+     */
+    function throwClarificationError(interpretation: DNFFormula, column: number, existingObjects: ObjectDict){
         var candidateSet = new collections.Set<string>();
         var descriptionLookUp = new collections.Dictionary<string, string>();
 
@@ -324,172 +506,7 @@ module Interpreter {
             userQuestion += desc;
             firstTime = false;
         }
+
         throw new Error(userQuestion);
     }
-
-
-    /**
-    * Filters out all objects which don't exist in world state.
-    * The WorldState.objects property maps all possible identifier to objects,
-    * even those who are not in the given world.
-    */
-    function filterExistingObjects(state: WorldState) : ObjectDict {
-        var existingObjects: ObjectDict = {};
-        for (var name of Object.keys(state.objects)) {
-            var definition: ObjectDefinition = state.objects[name];
-            // Check whether object is held
-            if(state.holding == name) {
-                existingObjects[name] = new Physics.FoundObject(definition, true,  -1, -1,false);
-                continue;
-            }
-
-            // Check whether object exists on stacks
-            for (var i = 0; i < state.stacks.length; i++) {
-                var stack = state.stacks[i];
-                var loc = stack.indexOf(name)
-                if (loc > -1) {
-                    existingObjects[name] = new Physics.FoundObject(definition, false,  i, loc,false);
-                    continue;
-                }
-            }
-        }
-
-        // Floor always exists
-        existingObjects["floor"] = new Physics.FoundObject({form:"floor", size:null, color: null}, false, -1, -1, true);
-
-        return existingObjects;
-    }
-
-    function generateAllDFN(targets: string[], goals: string[],location:string, existingObjects: ObjectDict) : DNFFormula {
-      var allCombinations : number[][];
-      var allDNF : DNFFormula = [];
-      allCombinations = getCombinations(targets.length, goals.length-1).toArray();
-      for(var perm of allCombinations){
-        var conj : Conjunction = [];
-        for (var i = 0; i < goals.length; i++) {
-          conj.push({polarity : true, relation : location, args : [targets[i], goals[perm[i]]]});
-        }
-        allDNF.push(conj);
-      }
-    return allDNF;
-    }
-
-
-
-    /**
-    * Find all candidates for given entity.
-    */
-    function filterCandidate(entity: Parser.Entity, objects: ObjectDict): Candidates {
-        var objCandidates: string[] = [];
-        var rootObject: Parser.Object = entity.object;
-        var relation : string = undefined;
-        var nestedCandidates : Candidates = undefined;
-        var nestedCandidates2 : Candidates = undefined;
-
-        // Unpack object if we have a location relationship here
-        if (rootObject.object != undefined) {
-            relation = rootObject.location.relation;
-            nestedCandidates = filterCandidate(rootObject.location.entity,objects);
-            if (relation === "between") {
-                nestedCandidates2 = filterCandidate(rootObject.location.entity2, objects);
-            }
-            rootObject = rootObject.object;
-        }
-
-        // Check now with all available properties
-        for (var name of Object.keys(objects)) {
-            var object = objects[name];
-            var def = object.definition;
-            if (hasSameAttributes(rootObject, def)) {
-                if(nestedCandidates == undefined) {
-                  console.log("object in hasSameAttributes",name);
-                    objCandidates.push(name);
-                }
-                // Check whether one relation satisfying candidate exist
-                else {
-                    if (relation === "between"){
-                        for (var nested of nestedCandidates.main) {
-                            for (var nested2 of nestedCandidates2.main){
-                                if ((Physics.hasValidLocation(objects[name],"leftof",objects[nested])
-                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested2])) ||
-                                (Physics.hasValidLocation(objects[name],"leftof",objects[nested2])
-                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested]))) {
-                                    objCandidates.push(name);
-                                    break;
-                                }
-                            }
-                        }
-                    } else {
-                        for (var nested of nestedCandidates.main) {
-                            if (Physics.hasValidLocation(objects[name],relation,objects[nested])) {
-                              console.log("object in hasValidLocation",name);
-                                objCandidates.push(name);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return new Candidates(objCandidates, relation, nestedCandidates, nestedCandidates2);
-    }
-
-    /**
-    * Check if two objects have the same attributes.
-    */
-    function hasSameAttributes (currObject: Parser.Object, other: ObjectDefinition): boolean {
-        return (currObject.form == "anyform" || currObject.form == other.form) &&
-        (currObject.size == null || currObject.size == other.size) &&
-        (currObject.color == null || currObject.color == other.color);
-    }
-    function addPermutations(a : number[], l: number, r : number, set : collections.Set<number[]>) : void {
-  if (l == r) {
-    set.add(a);
-  } else {
-    for (var i : number = l; i <= r; i++) {
-      var tmp : number;
-      //swap lth and ith
-      tmp = a[l];
-      a[l] = a[i];
-      a[i] = tmp;
-
-      addPermutations(a, l+1, r, set);
-
-      //swap lth and ith
-      tmp = a[l];
-      a[l] = a[i];
-      a[i] = tmp;
-    }
-  }
-}
-
-function getPermutations(n : number) : collections.Set<number[]> {
-  var set = new collections.Set<number[]>();
-  var a : number[];
-  for (var i = 0; i < n; i++){
-    a.push(i);
-  }
-  addPermutations(a, 0, a.length-1, set);
-  return set;
-}
-
-function addCombinations(a : number[], length : number, highest : number, set : collections.Set<number[]>) : void {
-  if (a.length == length){
-    set.add(a);
-  } else {
-    for (var i = 0; i <= highest; i++){
-      var b : number[] = a;
-      b.push(i);
-      addCombinations(b, length, highest, set);
-    }
-  }
-}
-
-function getCombinations(length : number, highest : number) : collections.Set<number[]> {
-  var res = new collections.Set<number[]>();
-  addCombinations([], length, highest, res);
-  return res;
-}
-
 }

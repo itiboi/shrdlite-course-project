@@ -160,4 +160,12 @@ module Physics {
                 return false;
         }
     }
+    /**
+    * Check if two objects have the same attributes.
+    */
+    export function hasSameAttributes (currObject: Parser.Object, other: ObjectDefinition): boolean {
+        return (currObject.form == "anyform" || currObject.form == other.form) &&
+        (currObject.size == null || currObject.size == other.size) &&
+        (currObject.color == null || currObject.color == other.color);
+    }
 }
