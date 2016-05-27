@@ -402,4 +402,53 @@ module Interpreter {
         (currObject.size == null || currObject.size == other.size) &&
         (currObject.color == null || currObject.color == other.color);
     }
+    function addPermutations(a : number[], l: number, r : number, set : collections.Set<number[]>) : void {
+  if (l == r) {
+    set.add(a);
+  } else {
+    for (var i : number = l; i <= r; i++) {
+      var tmp : number;
+      //swap lth and ith
+      tmp = a[l];
+      a[l] = a[i];
+      a[i] = tmp;
+
+      addPermutations(a, l+1, r, set);
+
+      //swap lth and ith
+      tmp = a[l];
+      a[l] = a[i];
+      a[i] = tmp;
+    }
+  }
+}
+
+function getPermutations(n : number) : collections.Set<number[]> {
+  var set = new collections.Set<number[]>();
+  var a : number[];
+  for (var i = 0; i < n; i++){
+    a.push(i);
+  }
+  addPermutations(a, 0, a.length-1, set);
+  return set;
+}
+
+function addCombinations(a : number[], length : number, highest : number, set : collections.Set<number[]>) : void {
+  if (a.length == length){
+    set.add(a);
+  } else {
+    for (var i = 0; i <= highest; i++){
+      var b : number[] = a;
+      b.push(i);
+      addCombinations(b, length, highest, set);
+    }
+  }
+}
+
+function getCombinations(length : number, highest : number) : collections.Set<number[]> {
+  var res = new collections.Set<number[]>();
+  addCombinations([], length, highest, res);
+  return res;
+}
+
 }
