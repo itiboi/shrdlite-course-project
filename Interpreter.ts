@@ -273,7 +273,7 @@ module Interpreter {
             firstLiteral = conj[0];
             candidateID = firstLiteral.args[column];
             if (!candidateSet.contains(candidateID)) {
-                var descrString : string = "the ";
+                var descrString : string = "The ";
                 descrString += existingObjects[candidateID].definition.size + " ";
                 descrString += existingObjects[candidateID].definition.color + " ";
                 descrString += existingObjects[candidateID].definition.form;

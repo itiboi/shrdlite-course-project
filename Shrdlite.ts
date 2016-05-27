@@ -82,17 +82,18 @@ module Shrdlite {
             }
         }
         catch(err) {
-            console.log("catching?");
-            var stringErr : string = String(err);
+            //console.log("catching?");
+            var stringErr : string = err.message;
             var keyString :string = "[ambiguity]";
             var idxKey : number = stringErr.search(keyString);
             if(idxKey != -1){
                 world.printError("An ambiguity exists, did you mean :");
-                stringErr.substring(idxKey+keyString.length-1,stringErr.length).split(",").map(
+                stringErr.replace(keyString, "").split("|").map(
                     (message:string) => {
-                        world.printError("-> "+message+"?");
+                        world.printError("- "+message+"?");
                     });
-            }else{
+            }
+            else{
                 world.printError("Interpretation error", err);
             }
             return;
@@ -125,7 +126,7 @@ module Shrdlite {
         return finalPlan;
     }
 
-    export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[],world :World){
+    export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
         var userQuestion : string = "Did you mean ";
         var firstTime : boolean = true;
         var erstesMal : boolean = true;
