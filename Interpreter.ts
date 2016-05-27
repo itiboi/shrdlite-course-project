@@ -237,23 +237,28 @@ module Interpreter {
 
         if (cmd.entity !== undefined && cmd.entity.quantifier === "the") {
             if (cmd.location !== undefined && cmd.location.relation === "between" && interpretation.length > 2) {
+                console.log("way1");
                 askForClarification(interpretation, 0, existingObjects);
             } else if (interpretation.length > 1) {
+                console.log("way2");
                 askForClarification(interpretation, 0, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.entity.quantifier === "the") {
             if (cmd.location.relation === "between" && interpretation.length > 2) {
-                askForClarification(interpretation, 0, existingObjects);
-            } else if (interpretation.length > 1) {
-                askForClarification(interpretation, 0, existingObjects);
+                console.log("way3");
+                askForClarification(interpretation, 1, existingObjects);
+            } else if (cmd.location.relation !== "between" && interpretation.length > 1) {
+                console.log("way4");
+                askForClarification(interpretation, 1, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.relation === "between" && cmd.location.entity2.quantifier === "the") {
             if (interpretation.length > 2) {
-                askForClarification(interpretation, 0, existingObjects);
+                console.log("way5");
+                askForClarification(interpretation, 1, existingObjects);
             }
         }
 
@@ -286,6 +291,9 @@ module Interpreter {
         var candidateSet = new collections.Set<string>();
         var descriptionLookUp = new collections.Dictionary<string, string>();
 
+        console.log("started disambiguation.");
+        console.log(interpretation);
+
         for (var conj of interpretation) {
             var firstLiteral : Literal;
             var candidateID : string;
@@ -303,6 +311,8 @@ module Interpreter {
                 candidateSet.add(candidateID);
             }
         }
+
+        console.log(candidateSet);
 
         if (candidateSet.size() < 2) {
             return;
