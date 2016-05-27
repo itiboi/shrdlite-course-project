@@ -5,3 +5,5 @@ doc/**
 tsconfig.json
 *.js
 .floo*
+TestAStar.js
+TestInterpreter.js

@@ -67,9 +67,10 @@ module Parser {
         relation : string;
 	/** The entity relative to which the preposition should be interpreted. */
         entity : Entity;
+        entity2? : Entity;
     }
 
-    /** 
+    /**
      * A user's description of an object in the world. A basic object
      * is described by its size ("small", "large", etc.), color
      * ("black", "white", etc.) and form ("object", "ball", "box",
@@ -82,7 +83,7 @@ module Parser {
      * support that. Instead, we include all possible fields and
      * assume that if `object?` and `location?` are set, the others
      * will be undefined and vice versa.
-     * 
+     *
      */
     export interface Object {
 	/** Recursive reference to an object using a relative clause. */
@@ -134,5 +135,3 @@ if (typeof require !== 'undefined') {
     var nearley = require('./lib/nearley.js');
     var grammar = require('./grammar.js');
 }
-
-

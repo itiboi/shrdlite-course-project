@@ -35,13 +35,14 @@ function R(obj) {
 
 ## Grammar rules
 
-main --> will_you:? please:? command please:?  {% R(2) %}  
+main --> will_you:? please:? command please:?  {% R(2) %}
 
 command --> take entity           {% R({command:"take", entity:1}) %}
 command --> move  it    location  {% R({command:"put", location:2}) %}
 command --> move entity location  {% R({command:"move", entity:1, location:2}) %}
 
-location --> relation entity  {% R({relation:0, entity:1}) %}
+location --> relation entity {% R({relation:0, entity:1}) %}
+location --> between entity ("and") entity {% R({relation:0, entity:1, entity2:3}) %}
 
 entity --> quantifierSG objectSG  {% R({quantifier:0, object:1}) %}
 entity --> quantifierPL objectPL  {% R({quantifier:0, object:1}) %}
@@ -67,6 +68,9 @@ relation --> ("on" | "on" "top" "of")    {% R("ontop") %}
 relation --> ("under" | "below")         {% R("under") %}
 relation --> ("beside")                  {% R("beside") %}
 relation --> ("above")                   {% R("above") %}
+relation --> ("just" "left" "of" | "just" "to" "the" "left" "of") {% R("justleftof") %}
+relation --> ("just" "right" "of" | "just" "to" "the" "right" "of") {% R("justrightof") %}
+between --> ("between")                  {% R("between") %}
 
 size --> ("small" | "tiny")  {% R("small") %}
 size --> ("large" | "big")   {% R("large") %}

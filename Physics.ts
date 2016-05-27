@@ -124,4 +124,43 @@ module Physics {
     // Rest is allowed
     return true;
   }
+
+  /**
+  * Check whether given relation is in general feasible considering physical laws.
+  */
+
+export function isValidBetweenLocation (goal1: Physics.FoundObject, target:Physics.FoundObject,goal2:Physics.FoundObject) : boolean{
+  return isValidGoalLocation(goal1, "leftof",target) && isValidGoalLocation (goal2,"rightof",target);
+}
+
+  export function isValidGoalLocation(c1: Physics.FoundObject, relation: string, c2: Physics.FoundObject): boolean{
+      if(c1==c2) {
+          return false;
+      }
+
+      switch(relation) {
+          case "leftof":
+          return true;
+          case "rightof":
+          return true;
+          case "inside":
+          if(c2.definition.size == "small" && c1.definition.size == "large") {
+              return false;
+          }
+          return c2.definition.form == "box";
+          case "ontop":
+          return Physics.isStackingAllowedByPhysics(c1.definition, c2.definition);
+          case "under":
+          return true;
+          case "beside":
+          return true;
+          case "above":
+          return true;
+          default:
+          console.warn("Unknown relation received:", relation);
+          return false;
+      }
+  }
+
+
 }

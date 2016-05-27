@@ -114,27 +114,30 @@ module Interpreter {
         main: string[];
         relation : string;
         nested: Candidates;
+        nested2: Candidates;
 
-        constructor(main: string[], relation : string, nested: Candidates){
+        constructor(main: string[], relation : string, nested: Candidates, nested2: Candidates){
             this.main = main;
             this.relation = relation;
             this.nested = nested;
+            this.nested2 = nested2;
         }
     }
 
     //////////////////////////////////////////////////////////////////////
     // private functions
     /**
-    * The core interpretation function. The code here is just a
-    * template; you should rewrite this function entirely. In this
-    * template, the code produces a dummy interpretation which is not
-    * connected to `cmd`, but your version of the function should
-    * analyse cmd in order to figure out what interpretation to
-    * return.
-    * @param cmd The actual command. Note that it is *not* a string, but rather an object of type `Command` (as it has been parsed by the parser).
-    * @param state The current state of the world. Useful to look up objects in the world.
-    * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
-    */
+     * The core interpretation function. The code here is just a
+     * template; you should rewrite this function entirely. In this
+     * template, the code produces a dummy interpretation which is not
+     * connected to `cmd`, but your version of the function should
+     * analyse cmd in order to figure out what interpretation to
+     * return.
+     * @param cmd The actual command. Note that it is *not* a string, but rather an object of type `Command` (as it has been parsed by the parser).
+     * @param state The current state of the world. Useful to look up objects in the world.
+     * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
+     * @throws An error when no valid interpretations can be found
+     */
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
         // TODO: Handle ambiguity depending on quantifier for target and goal (ask user for clarification)
         // TODO: Extension for 'all' quantifier (small)
@@ -152,12 +155,18 @@ module Interpreter {
         if (cmd.command != "put") {
             mainCandidates = filterCandidate(cmd.entity, existingObjects);
         }
+
         console.log("Main", mainCandidates);
 
         // Get candidates for optional location (for move and put)
         var goalLocationCandidates: Candidates = undefined;
+        var betweenSecondLocationCandidates : Candidates = undefined;
         if (cmd.location !== undefined) {
             goalLocationCandidates = filterCandidate(cmd.location.entity, existingObjects);
+            if(cmd.location.relation === "between"){
+              betweenSecondLocationCandidates = filterCandidate(cmd.location.entity2,existingObjects);
+              console.log("Other goal",betweenSecondLocationCandidates);
+            }
         }
         console.log("Goal", goalLocationCandidates);
 
@@ -166,11 +175,19 @@ module Interpreter {
             // Add every feasible combination of target and goal as interpretation
             for (var target of mainCandidates.main) {
                 for (var goal of goalLocationCandidates.main) {
-                    if (isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
+                  if(cmd.location.relation === "between"){
+                    for(var otherGoal of betweenSecondLocationCandidates.main){
+                      interpretation = buildBetweenConj(goal,target,otherGoal,existingObjects,interpretation);
+                    }
+                  }
+                  else{
+                    if (Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
                         interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target,goal]}]);
                     }
+                  }
                 }
             }
+
             break;
             case "take":
             for (var target of mainCandidates.main) {
@@ -184,30 +201,64 @@ module Interpreter {
             if(state.holding == null) {
                 break;
             }
-
+            console.log("INSIDE PUT");
             // Add all feasible goals as interpretation
             var target = state.holding;
             for (var goal of goalLocationCandidates.main) {
-                if (isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])) {
-                    interpretation.push([{ polarity: true, relation: cmd.location.relation, args: [target, goal] }]);
+              if(cmd.location.relation === "between"){
+                for(var othergoal of betweenSecondLocationCandidates.main){
+                  console.log("goal",existingObjects[goal]);
+                  console.log("othergoal",existingObjects[othergoal]);
+                  if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
+                        console.log("passed the physics");
+                        interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
+                                             {polarity: true, relation: "rightof", args: [target, othergoal]}]);
+                  }
+                  if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
+                        console.log("passed the physics");
+                        interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
+                                             {polarity: true, relation: "rightof", args: [target, goal]}]);
+                  }
                 }
+              }
+              else{(Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal]))
+                    interpretation.push([{ polarity: true, relation: cmd.location.relation, args: [target, goal] }]);
+              }
             }
             break;
         }
+
 
         if (interpretation.length == 0) {
             console.log("Could not find valid interpretation in world");
             throw new Error("Sentence has no valid interpretation in world");
         }
 
-        if ((cmd.entity.quantifier == "the") && interpretation.length > 1) {
+        if (cmd.entity.quantifier == "the" && interpretation.length > 1) {
             askForClarification(interpretation, 0, existingObjects);
         }
-
-        if ((cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
+        console.log("here",interpretation);
+        if ((cmd.location!== undefined && cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
             askForClarification(interpretation, 1, existingObjects);
         }
+        console.log("interpretation",interpretation);
+        return interpretation;
+    }
 
+
+    function buildBetweenConj (goal:string, target:string,othergoal: string, existingObjects:ObjectDict,interpretation:DNFFormula) : DNFFormula {
+
+          if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
+                console.log("passed the physics");
+                interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
+                                     {polarity: true, relation: "rightof", args: [target, othergoal]}]);
+          }
+          if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
+                console.log("passed the physics");
+                interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
+                                     {polarity: true, relation: "rightof", args: [target, goal]}]);
+          }
+          console.log("conj",interpretation);
         return interpretation;
     }
 
@@ -233,6 +284,10 @@ module Interpreter {
             }
         }
 
+        if (candidateSet.size() < 2) {
+            return;
+        }
+
         var userQuestion : string = "Did you mean ";
         var firstTime : boolean = true;
         for (var desc of descriptionLookUp.keys()){
@@ -246,37 +301,6 @@ module Interpreter {
         throw new Error(userQuestion);
     }
 
-    /**
-    * Check whether given relation is in general feasible considering physical laws.
-    */
-    function isValidGoalLocation(c1: Physics.FoundObject, relation: string, c2: Physics.FoundObject): boolean{
-        if(c1==c2) {
-            return false;
-        }
-
-        switch(relation) {
-            case "leftof":
-                return true;
-            case "rightof":
-                return true;
-            case "inside":
-                if(c2.definition.size == "small" && c1.definition.size == "large") {
-                    return false;
-                }
-                return c2.definition.form == "box";
-            case "ontop":
-                return Physics.isStackingAllowedByPhysics(c1.definition, c2.definition);
-            case "under":
-                return true;
-            case "beside":
-                return true;
-            case "above":
-                return true;
-            default:
-                console.warn("Unknown relation received:", relation);
-                return false;
-        }
-    }
 
     /**
     * Filters out all objects which don't exist in world state.
@@ -318,11 +342,15 @@ module Interpreter {
         var rootObject: Parser.Object = entity.object;
         var relation : string = undefined;
         var nestedCandidates : Candidates = undefined;
+        var nestedCandidates2 : Candidates = undefined;
 
         // Unpack object if we have a location relationship here
         if (rootObject.object != undefined) {
             relation = rootObject.location.relation;
-            var nestedCandidates = filterCandidate(rootObject.location.entity,objects);
+            nestedCandidates = filterCandidate(rootObject.location.entity,objects);
+            if (relation === "between") {
+                nestedCandidates2 = filterCandidate(rootObject.location.entity2, objects);
+            }
             rootObject = rootObject.object;
         }
 
@@ -332,21 +360,37 @@ module Interpreter {
             var def = object.definition;
             if (hasSameAttributes(rootObject, def)) {
                 if(nestedCandidates == undefined) {
+                  console.log("object in hasSameAttributes",name);
                     objCandidates.push(name);
                 }
                 // Check whether one relation satisfying candidate exist
                 else {
-                    for (var nested of nestedCandidates.main) {
-                        if (Physics.hasValidLocation(objects[name],relation,objects[nested])) {
-                            objCandidates.push(name);
-                            break;
+                    if (relation === "between"){
+                        for (var nested of nestedCandidates.main) {
+                            for (var nested2 of nestedCandidates2.main){
+                                if ((Physics.hasValidLocation(objects[name],"leftof",objects[nested])
+                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested2])) ||
+                                (Physics.hasValidLocation(objects[name],"leftof",objects[nested2])
+                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested]))) {
+                                    objCandidates.push(name);
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        for (var nested of nestedCandidates.main) {
+                            if (Physics.hasValidLocation(objects[name],relation,objects[nested])) {
+                              console.log("object in hasValidLocation",name);
+                                objCandidates.push(name);
+                                break;
+                            }
                         }
                     }
                 }
             }
         }
 
-        return new Candidates(objCandidates, relation, nestedCandidates);
+        return new Candidates(objCandidates, relation, nestedCandidates, nestedCandidates2);
     }
 
     /**
