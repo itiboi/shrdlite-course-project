@@ -127,16 +127,17 @@ module Interpreter {
     //////////////////////////////////////////////////////////////////////
     // private functions
     /**
-    * The core interpretation function. The code here is just a
-    * template; you should rewrite this function entirely. In this
-    * template, the code produces a dummy interpretation which is not
-    * connected to `cmd`, but your version of the function should
-    * analyse cmd in order to figure out what interpretation to
-    * return.
-    * @param cmd The actual command. Note that it is *not* a string, but rather an object of type `Command` (as it has been parsed by the parser).
-    * @param state The current state of the world. Useful to look up objects in the world.
-    * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
-    */
+     * The core interpretation function. The code here is just a
+     * template; you should rewrite this function entirely. In this
+     * template, the code produces a dummy interpretation which is not
+     * connected to `cmd`, but your version of the function should
+     * analyse cmd in order to figure out what interpretation to
+     * return.
+     * @param cmd The actual command. Note that it is *not* a string, but rather an object of type `Command` (as it has been parsed by the parser).
+     * @param state The current state of the world. Useful to look up objects in the world.
+     * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
+     * @throws An error when no valid interpretations can be found
+     */
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
         // TODO: Handle ambiguity depending on quantifier for target and goal (ask user for clarification)
         // TODO: Extension for 'all' quantifier (small)
