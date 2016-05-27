@@ -238,8 +238,8 @@ module Interpreter {
         if (cmd.entity !== undefined && cmd.entity.quantifier === "the") {
             if (cmd.location !== undefined && cmd.location.relation === "between" && interpretation.length > 2) {
                 console.log("way1");
-                askForClarification(interpretation, 0, existingObjects);
-            } else if (interpretation.length > 1) {
+                askForBetweenClarification(interpretation, 0, existingObjects);
+            } else if ((cmd.location === undefined || cmd.location.relation !== "between") && interpretation.length > 1) {
                 console.log("way2");
                 askForClarification(interpretation, 0, existingObjects);
             }
@@ -248,7 +248,7 @@ module Interpreter {
         if (cmd.location !== undefined && cmd.location.entity.quantifier === "the") {
             if (cmd.location.relation === "between" && interpretation.length > 2) {
                 console.log("way3");
-                askForClarification(interpretation, 1, existingObjects);
+                askForBetweenClarification(interpretation, 1, existingObjects);
             } else if (cmd.location.relation !== "between" && interpretation.length > 1) {
                 console.log("way4");
                 askForClarification(interpretation, 1, existingObjects);
@@ -258,7 +258,7 @@ module Interpreter {
         if (cmd.location !== undefined && cmd.location.relation === "between" && cmd.location.entity2.quantifier === "the") {
             if (interpretation.length > 2) {
                 console.log("way5");
-                askForClarification(interpretation, 1, existingObjects);
+                askForBetweenClarification(interpretation, 1, existingObjects);
             }
         }
 
@@ -287,17 +287,26 @@ module Interpreter {
         return interpretation;
     }
 
-    function askForClarification(interpretation :DNFFormula, column : number,existingObjects:ObjectDict){
+    function askForClarification(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
+        askForGeneralClarification(interpretation, column, existingObjects, 0, 1);
+    }
+
+    function askForBetweenClarification(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
+        askForGeneralClarification(interpretation, column, existingObjects, 0, 2);
+        askForGeneralClarification(interpretation, column, existingObjects, 1, 2);
+    }
+
+    function askForGeneralClarification(interpretation : DNFFormula, column : number, existingObjects : ObjectDict, startingPosition : number, stepSize : number){
         var candidateSet = new collections.Set<string>();
         var descriptionLookUp = new collections.Dictionary<string, string>();
 
         console.log("started disambiguation.");
         console.log(interpretation);
 
-        for (var conj of interpretation) {
+        for (var i = startingPosition; i < interpretation.length; i+=stepSize) {
             var firstLiteral : Literal;
             var candidateID : string;
-            firstLiteral = conj[0];
+            firstLiteral = interpretation[i][0];
             candidateID = firstLiteral.args[column];
             if (!candidateSet.contains(candidateID)) {
                 var descrString : string = "the ";
