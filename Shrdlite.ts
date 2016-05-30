@@ -128,45 +128,99 @@ module Shrdlite {
 
     export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
         var userQuestion : string = "Did you mean to " + interpretations[0].parse.command + " ";
-        var stringBool : boolean = true;
-        interpretations.forEach((interpretation) =>{
-        var parsingCommand:Parser.Command = interpretation.parse;
-        var parsingEntity  = parsingCommand.entity;
 
-        var currObject = parsingCommand.entity.object
-          while(currObject!=undefined){
+        for(var interpretation of interpretations){
+          var mainObjectDescription: string = generateOneString(interpretation.parse.entity);
+          userQuestion += interpretation.parse.location.relation + " ";
+          var goalObjectDescription : string = generateOneString(interpretation.parse.location.entity) + " ";
+          userQuestion += goalObjectDescription;
 
-            if( parsingEntity.quantifier === "any")
-            {userQuestion+= " a " }
-          else{
-            userQuestion+= parsingEntity.quantifier + " ";
-          }
-            // TODO ADD A CHECK IF properties != undefined
-            if(currObject.size != undefined){
-              userQuestion+= currObject.size + " " ;
-            }
-            if(currObject.color!= undefined){
-              userQuestion+= currObject.color + " " ;
-            }
-            if(currObject.form !=undefined){
-              userQuestion+=currObject.form + " ";
-            }
-            if(stringBool){
-              userQuestion += " that is "
-              stringBool = false;
-            }
-            if(parsingEntity.object.location!=undefined){
-              userQuestion += parsingEntity.object.location + " ";
-              parsingEntity = parsingEntity.object.location.entity;
-            }
-            currObject = currObject.object;
-          }
-          stringBool = true;
-
-        });
-
-
+        }
+        // var stringBool : boolean = false;
+        // var parsingCommand:Parser.Command = interpretation.parse;
+        // var quantifierPointer  = parsingCommand.entity;
+        //
+        // var currObject = parsingCommand.entity.object.object;
+        //   while(currObject!=undefined){
+        //     console.log("currObject",currObject);
+        //     console.log("parsingCommand",parsingCommand);
+        //
+        //     if( quantifierPointer.quantifier === "any")
+        //     {userQuestion+= " a " }
+        //   else{
+        //     userQuestion+= quantifierPointer.quantifier + " ";
+        //   }
+        //     // TODO ADD A CHECK IF properties != undefined
+        //     if(currObject.size != undefined){
+        //       userQuestion+= currObject.size + " " ;
+        //     }
+        //     if(currObject.color!= undefined){
+        //       userQuestion+= currObject.color + " " ;
+        //     }
+        //     if(currObject.form !=undefined){
+        //       userQuestion+=currObject.form + " ";
+        //     }
+        //     if(stringBool){
+        //       userQuestion += " that is "
+        //
+        //     }
+        //     if(currObject.location!=undefined){
+        //       userQuestion += currObject.location.relation + " ";
+        //       quantifierPointer = currObject.location.entity;
+        //       stringBool = true;
+        //       currObject = currObject.location.entity.object;
+        //     }else{
+        //       break;
+        //     }
+        //
+        //   }
+        //
+        //   /// LOCATION STUFF
+        //   quantifierPointer = parsingCommand.location.entity;
+        //   currObject = parsingCommand.location.entity.object;
+        //   stringBool = true;
+        //   while(currObject!=undefined){
+        //     console.log("currObject",currObject);
+        //     console.log("parsingCommand",parsingCommand);
+        //
+        //     if( quantifierPointer.quantifier === "any")
+        //     {userQuestion+= " a " }
+        //   else{
+        //     userQuestion+= quantifierPointer.quantifier + " ";
+        //   }
+        //     // TODO ADD A CHECK IF properties != undefined
+        //
+        //
+        //   }
+        //   userQuestion += " or did you mean "
+        //
+        // userQuestion+= "?"
         throw new Error(userQuestion);
+    }
+
+
+    export function generateOneString(parsingCommand : Parser.Entity):string{
+      var buildQuestion : string = " ";
+      buildQuestion += parsingCommand.quantifier;
+      var rootObject = parsingCommand.object;
+      if(rootObject.object != undefined){
+        console.log("I'm not undefined.");
+        var relation = rootObject.location.relation;
+        console.log(relation);
+        buildQuestion+= generateOneString(parsingCommand.object.location.entity) +  " " + relation;
+      }
+
+      if(rootObject.size != undefined){
+           buildQuestion+= rootObject.size + " " ;
+         }
+         if(rootObject.color!= undefined){
+           buildQuestion+= rootObject.color + " " ;
+         }
+         if(rootObject.form !=undefined){
+           buildQuestion+=rootObject.form + " ";
+         }
+
+      return buildQuestion;
     }
 
     export function describeObject(id : string, world : World) : string {
