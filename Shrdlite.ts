@@ -134,6 +134,7 @@ module Shrdlite {
           userQuestion += interpretation.parse.location.relation + " ";
           var goalObjectDescription : string = generateOneString(interpretation.parse.location.entity) + " ";
           userQuestion += goalObjectDescription;
+          userQuestion += " or ";
 
         }
         // var stringBool : boolean = false;
@@ -201,25 +202,34 @@ module Shrdlite {
 
     export function generateOneString(parsingCommand : Parser.Entity):string{
       var buildQuestion : string = " ";
-      buildQuestion += parsingCommand.quantifier;
+      buildQuestion += parsingCommand.quantifier + " ";
       var rootObject = parsingCommand.object;
+      if(rootObject.object!=undefined){
+        rootObject= rootObject.object;
+      }
+      console.log("rootObject", rootObject)
+      if(rootObject.size != undefined){
+         console.log("size", rootObject.size);
+         buildQuestion+= rootObject.size + " " ;
+      }
+      if(rootObject.color!= undefined){
+        console.log("color", rootObject.size);
+        buildQuestion+= rootObject.color + " " ;
+      }
+      if(rootObject.form !=undefined){
+        console.log("form", rootObject.form);
+        buildQuestion+=rootObject.form + " ";
+      }
+      if(rootObject.location!= undefined){
+        buildQuestion += rootObject.location.relation + " ";
+      }
+
       if(rootObject.object != undefined){
         console.log("I'm not undefined.");
         var relation = rootObject.location.relation;
         console.log(relation);
-        buildQuestion+= generateOneString(parsingCommand.object.location.entity) +  " " + relation;
+        buildQuestion+= "that is " + relation + " " + generateOneString(rootObject.location.entity) + " ";
       }
-
-      if(rootObject.size != undefined){
-           buildQuestion+= rootObject.size + " " ;
-         }
-         if(rootObject.color!= undefined){
-           buildQuestion+= rootObject.color + " " ;
-         }
-         if(rootObject.form !=undefined){
-           buildQuestion+=rootObject.form + " ";
-         }
-
       return buildQuestion;
     }
 
