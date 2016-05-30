@@ -457,11 +457,11 @@ module Planner {
             // Perform actual action
             if (nextState.holding == null) {
                 // Drop object
-                instructions.push("Dropping the " + fullObj.definition.form, "d");
+                instructions.push("Dropping the " + Physics.getMinimalDescription(fullObj.definition, objects), "d");
             }
             else {
                 // Take object
-                instructions.push("Picking up the " + fullObj.definition.form, "p");
+                instructions.push("Picking up the " + Physics.getMinimalDescription(fullObj.definition, objects), "p");
             }
 
             lastState = nextState;
@@ -472,6 +472,4 @@ module Planner {
         console.log("Length of instructions is:", instructions.filter((c) => (c.length == 1)).length);
         return instructions;
     }
-
-
 }

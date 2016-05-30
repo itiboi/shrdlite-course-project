@@ -155,6 +155,7 @@ module Physics {
                 return false;
         }
     }
+
     /**
     * Check if two objects have the same attributes.
     */
@@ -162,5 +163,33 @@ module Physics {
         return (currObject.form == "anyform" || currObject.form == other.form) &&
         (currObject.size == null || currObject.size == other.size) &&
         (currObject.color == null || currObject.color == other.color);
+    }
+
+    /**
+     * Retrieve the minimal needed description to describe the object unique in the world
+     */
+    export function getMinimalDescription(obj: ObjectDefinition, objects: { [s: string]: ObjectDefinition }): string {
+        var allObjects: ObjectDefinition[] = Object.keys(objects).map((k) => objects[k]);
+
+        // Try only form first
+        var count: number = 0;
+        allObjects.map((o) => {
+            count += (obj.form == o.form) ? 1 : 0;
+        });
+        if (count == 1) {
+            return obj.form;
+        }
+
+        // Then color
+        count = 0;
+        allObjects.map((o) => {
+            count += (obj.form == o.form && obj.color == o.color) ? 1 : 0;
+        });
+        if(count == 1) {
+            return obj.color + " " + obj.form;
+        }
+
+        // Ok have to take full description
+        return obj.size + " " + obj.color + " " + obj.form;
     }
 }
