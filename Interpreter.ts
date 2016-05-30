@@ -174,12 +174,13 @@ module Interpreter {
         var generateAll = false;
         if((cmd.entity == undefined || cmd.entity.quantifier != "all") &&
            (cmd.location == undefined || cmd.location.entity.quantifier != "all")) {
-           interpretation = generateAnyDNF(
-               cmd, mainCandidates, goalLocationCandidates, betweenSecondLocationCandidates, existingObjects, state);
+            interpretation = generateAnyDNF(
+                cmd, mainCandidates, goalLocationCandidates, betweenSecondLocationCandidates, existingObjects, state);
         }
         else {
             console.log("Taking care of the all quantifier");
-            interpretation = generateAllDNF();
+            interpretation = generateAllDNF(
+                cmd, mainCandidates, goalLocationCandidates, betweenSecondLocationCandidates, existingObjects, state);
             // TODO: Filter out infeasible combinations.
         }
 
@@ -299,7 +300,7 @@ module Interpreter {
                     } else {
                         for (var nested of nestedCandidates.main) {
                             if (Physics.hasValidLocation(objects[name],relation,objects[nested])) {
-                              console.log("object in hasValidLocation",name);
+                                console.log("object in hasValidLocation",name);
                                 objCandidates.push(name);
                                 break;
                             }
@@ -332,12 +333,12 @@ module Interpreter {
                     for (var goal of goalLocationCandidates.main) {
                         if(cmd.location.relation === "between"){
                             for(var otherGoal of betweenSecondLocationCandidates.main){
-                                interpretation = buildBetweenConj(goal,target,otherGoal,existingObjects,interpretation);
+                                pushBetweenConj(goal, target, otherGoal, existingObjects, interpretation);
                             }
                         }
                         else {
                             if (Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
-                                interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target,goal]}]);
+                                interpretation.push([createLiteral(cmd.location.relation, [target,goal])]);
                             }
                         }
                     }
@@ -347,7 +348,7 @@ module Interpreter {
             case "take":
                 for (var target of mainCandidates.main) {
                     if (target != "floor") {
-                        interpretation.push([{polarity: true, relation: "holding", args: [target]}]);
+                        interpretation.push([createLiteral("holding", [target])]);
                     }
                 }
                 break;
@@ -361,23 +362,14 @@ module Interpreter {
                 var target = state.holding;
                 for (var goal of goalLocationCandidates.main) {
                     if(cmd.location.relation === "between"){
-                        for(var othergoal of betweenSecondLocationCandidates.main){
-                            console.log("goal",existingObjects[goal]);
-                            console.log("othergoal",existingObjects[othergoal]);
-                            if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
-                                console.log("passed the physics");
-                                interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
-                                                     {polarity: true, relation: "rightof", args: [target, othergoal]}]);
-                            }
-                            if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
-                                console.log("passed the physics");
-                                interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
-                                                     {polarity: true, relation: "rightof", args: [target, goal]}]);
-                            }
+                        for (var otherGoal of betweenSecondLocationCandidates.main) {
+                           pushBetweenConj(goal, target, otherGoal, existingObjects, interpretation);
                         }
                     }
-                    else{(Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal]))
-                        interpretation.push([{ polarity: true, relation: cmd.location.relation, args: [target, goal] }]);
+                    else{
+                        if(Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])) {
+                            interpretation.push([createLiteral(cmd.location.relation, [target, goal])]);
+                        }
                     }
                 }
 
@@ -390,7 +382,36 @@ module Interpreter {
     /**
     * Generate DNF for the all quantifier
     */
-    function generateAllDNF(targets: string[], goals: string[],location:string, existingObjects: ObjectDict) : DNFFormula {
+    function generateAllDNF(
+        cmd : Parser.Command, mainCandidates:Candidates, goalLocationCandidates:Candidates,
+        betweenSecondLocationCandidates:Candidates, existingObjects:ObjectDict, state:WorldState) : DNFFormula {
+
+        var interpretation: DNFFormula = [];
+        switch (cmd.command) {
+            case "move":
+            case "put":
+                break;
+            case "take":
+                // Simple: we can only take one object
+                if(mainCandidates.main.length > 1) {
+                    throw new Error("Impossible: Only one object can be held at a time!");
+                }
+
+                // Prevent floor
+                if(mainCandidates.main[0] != "floor") {
+
+                }
+
+                break;
+        }
+
+        return [];
+    }
+
+    /**
+    * Generate DNF for the all quantifier
+    */
+    function generateAllDNFOld(targets: string[], goals: string[],location:string, existingObjects: ObjectDict) : DNFFormula {
         var allCombinations : number[][];
         var allDNF : DNFFormula = [];
         allCombinations = getCombinations(targets.length, goals.length-1).toArray();
@@ -405,26 +426,28 @@ module Interpreter {
         return allDNF;
     }
 
+    /**
+     * Shortcut method for creating a literal. 
+     */
+    function createLiteral(relation: string, args: string[]): Literal {
+        return { polarity: true, relation: relation, args: args };
+    }
 
     /**
     * Building the interpretation for the between relationship
     * By creating a conjonction of leftof and rightof literal
     */
-    function buildBetweenConj (
-        goal:string, target:string,othergoal: string, existingObjects:ObjectDict,interpretation:DNFFormula) : DNFFormula {
+    function pushBetweenConj (
+        goal:string, target:string, othergoal: string, existingObjects:ObjectDict, interpretation: DNFFormula): void {
 
         if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
             //console.log("passed the physics");
-            interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
-                                {polarity: true, relation: "rightof", args: [target, othergoal]}]);
+            interpretation.push([createLiteral("leftof", [target, goal]), createLiteral("rightof", [target, othergoal])]);
         }
         if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
             //console.log("passed the physics");
-            interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
-                                {polarity: true, relation: "rightof", args: [target, goal]}]);
+            interpretation.push([createLiteral("leftof", [target, othergoal]), createLiteral("rightof", [target, goal])]);
         }
-        //console.log("conj",interpretation);
-        return interpretation;
     }
 
     function addPermutations(a : number[], l: number, r : number, set : collections.Set<number[]>) : void {
