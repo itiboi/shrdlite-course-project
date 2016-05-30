@@ -38,25 +38,27 @@ module Interpreter {
     * @param currentState The current state of the world.
     * @returns Augments ParseResult with a list of interpretations. Each interpretation is represented by a list of Literals.
     */
-    export function interpret(parses : Parser.ParseResult[], currentState : WorldState) : InterpretationResult[] {
+    export function interpret(parses : Parser.ParseResult[], currentState : WorldState) : collections.Dictionary<Parser.ParseResult,DNFFormula>{
         var errors : Error[] = [];
         var interpretations : InterpretationResult[] = [];
+        var dic : collections.Dictionary<Parser.ParseResult,DNFFormula>
         parses.forEach((parseresult) => {
             try {
                 var result : InterpretationResult = <InterpretationResult>parseresult;
                 result.interpretation = interpretCommand(result.parse, currentState);
-                interpretations.push(result);
+                dic.setValue(parseresult,result.interpretation);
             } catch(err) {
                 errors.push(err);
             }
         });
-        if (interpretations.length) {
+        if (dic.keys.length>0) {
             return interpretations;
         } else {
             // only throw the first error found
             throw errors[0];
         }
     }
+
 
     export interface InterpretationResult extends Parser.ParseResult {
         interpretation : DNFFormula;
