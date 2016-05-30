@@ -66,15 +66,11 @@ module Shrdlite {
 
         // Interpretation
         try {
-            var interpretations : collections.Dictionary = Interpreter.interpret(parses, world.currentState);
+            var interpretations : Interpreter.InterpretationResult[] = Interpreter.interpret(parses, world.currentState);
             world.printDebugInfo("Found " + interpretations.length + " interpretations");
             interpretations.forEach((result, n) => {
                 world.printDebugInfo("  (" + n + ") " + Interpreter.stringify(result));
             });
-
-            for(var parse of parses){
-
-            }
 
             if (interpretations.length > 1) {
                 console.log("inside multiple interpretations",interpretations.length);
