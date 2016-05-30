@@ -155,6 +155,12 @@ module Interpreter {
         if (cmd.command != "put") {
             mainCandidates = filterCandidate(cmd.entity, existingObjects);
         }
+        else {
+            // Create "candidate" from held object
+            // Sanity check whether we are actually holding something
+            var candidateList = (state.holding == null) ? [] : [state.holding];
+            mainCandidates = new Candidates(candidateList, undefined, undefined, undefined);
+        }
 
         console.log("Main objects", mainCandidates);
 
@@ -280,7 +286,7 @@ module Interpreter {
             var def = object.definition;
             if (Physics.hasSameAttributes(rootObject, def)) {
                 if(nestedCandidates == undefined) {
-                  console.log("object in hasSameAttributes",name);
+                    console.log("object in hasSameAttributes",name);
                     objCandidates.push(name);
                 }
                 // Check whether one relation satisfying candidate exist
@@ -327,6 +333,7 @@ module Interpreter {
 
         var interpretation:DNFFormula = [];
         switch (cmd.command) {
+            case "put":
             case "move":
                 // Add every feasible combination of target and goal as interpretation
                 for (var target of mainCandidates.main) {
@@ -351,28 +358,6 @@ module Interpreter {
                         interpretation.push([createLiteral("holding", [target])]);
                     }
                 }
-                break;
-            case "put":
-                // Sanity check whether we are actually holding something
-                if(state.holding == null) {
-                    break;
-                }
-                //console.log("INSIDE PUT");
-                // Add all feasible goals as interpretation
-                var target = state.holding;
-                for (var goal of goalLocationCandidates.main) {
-                    if(cmd.location.relation === "between"){
-                        for (var otherGoal of betweenSecondLocationCandidates.main) {
-                           pushBetweenConj(goal, target, otherGoal, existingObjects, interpretation);
-                        }
-                    }
-                    else{
-                        if(Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])) {
-                            interpretation.push([createLiteral(cmd.location.relation, [target, goal])]);
-                        }
-                    }
-                }
-
                 break;
         }
 
