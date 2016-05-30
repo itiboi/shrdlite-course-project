@@ -71,7 +71,7 @@ module Shrdlite {
             interpretations.forEach((result, n) => {
                 world.printDebugInfo("  (" + n + ") " + Interpreter.stringify(result));
             });
-
+            //TODO FILTER OUT nulls;
             if (interpretations.length > 1) {
                 console.log("inside multiple interpretations",interpretations.length);
                 generateUserQuestion(interpretations,world);
@@ -127,33 +127,45 @@ module Shrdlite {
     }
 
     export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
-        var userQuestion: string = "[ambiguity]";
-        var firstTime : boolean = true;
-        var erstesMal : boolean = true;
-        var forstaGang : boolean = true;
-        for(var dnf of interpretations){
-            if (!forstaGang) {
-                userQuestion+= "|";
+        var userQuestion : string = "Did you mean to " + interpretations[0].parse.command + " ";
+        var stringBool : boolean = true;
+        interpretations.forEach((interpretation) =>{
+        var parsingCommand:Parser.Command = interpretation.parse;
+        var parsingEntity  = parsingCommand.entity;
+
+        var currObject = parsingCommand.entity.object
+          while(currObject!=undefined){
+
+            if( parsingEntity.quantifier === "any")
+            {userQuestion+= " a " }
+          else{
+            userQuestion+= parsingEntity.quantifier + " ";
+          }
+            // TODO ADD A CHECK IF properties != undefined
+            if(currObject.size != undefined){
+              userQuestion+= currObject.size + " " ;
             }
-            erstesMal = true;
-            for(var conjList of dnf.interpretation){
-                if (!erstesMal) {
-                    userQuestion+= "|";
-                }
-                firstTime = true;
-                for(var conj of conjList){
-                    if (!firstTime) {
-                        userQuestion += " and "
-                    }
-                    userQuestion += describeObject(conj.args[0], world);
-                    userQuestion += " to be moved " + conj.relation + " ";
-                    userQuestion += describeObject(conj.args[1], world);
-                    firstTime = false;
-                }
-                erstesMal = false;
+            if(currObject.color!= undefined){
+              userQuestion+= currObject.color + " " ;
             }
-            forstaGang = false;
-        }
+            if(currObject.form !=undefined){
+              userQuestion+=currObject.form + " ";
+            }
+            if(stringBool){
+              userQuestion += " that is "
+              stringBool = false;
+            }
+            if(parsingEntity.object.location!=undefined){
+              userQuestion += parsingEntity.object.location + " ";
+              parsingEntity = parsingEntity.object.location.entity;
+            }
+            currObject = currObject.object;
+          }
+          stringBool = true;
+
+        });
+
+
         throw new Error(userQuestion);
     }
 
