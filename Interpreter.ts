@@ -400,6 +400,9 @@ module Interpreter {
                             var allConj: Conjunction = [];
                             for(var main of mainCandidates.main) {
                                 for(var goal of goalLocationCandidates.main) {
+                                    if (!Physics.isValidGoalLocation(existingObjects[main], relation, existingObjects[goal])) {
+                                        return [];
+                                    }
                                     allConj.push(createLiteral(relation, [main, goal]));
                                 }
                             }
