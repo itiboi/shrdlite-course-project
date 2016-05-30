@@ -124,14 +124,22 @@ module Physics {
         }
 
         // Rest is allowed
-        return true;
+        return topC.form != "floor";
     }
 
     /**
     * Check whether given relation is in general feasible considering physical laws.
     */
     export function isValidGoalLocation(c1: FoundObject, relation: string, c2: FoundObject, c3: FoundObject): boolean {
-        if(c1==c2 || (c2 == undefined && c2 == c3)) {
+        // Prevent usage of same object twice
+        if(c1==c2 || (c2 != undefined && c2 == c3)) {
+            return false;
+        }
+        // Prevent floor from being put on top of something
+        if (c1.floor && relation != "under") {
+            return false;
+        }
+        if (c2.floor && relation != "above" && relation != "ontop") {
             return false;
         }
 
