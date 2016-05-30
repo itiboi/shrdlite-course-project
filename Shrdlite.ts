@@ -208,38 +208,6 @@ module Shrdlite {
             return res;
         }
 
-        export function generateOneString(parsingCommand : Parser.Entity) : string {
-            console.log("generateOneString called", parsingCommand);
-            var buildQuestion : string = " ";
-            buildQuestion += parsingCommand.quantifier;
-            if (parsingCommand.object !== undefined &&
-                parsingCommand.object.object !== undefined) {
-                var rootObject = parsingCommand.object.object;
-                console.log("rootObject", rootObject);
-                if(rootObject.size != undefined){
-                    buildQuestion+= rootObject.size + " " ;
-                }
-                if(rootObject.color != undefined){
-                    buildQuestion+= rootObject.color + " " ;
-                }
-                if(rootObject.form != undefined){
-                    buildQuestion += rootObject.form + " ";
-                }
-                if(rootObject.form !=undefined){
-                    buildQuestion+=rootObject.form + " ";
-                }
-            }
-            buildQuestion += "that is";
-            if(rootObject.object != undefined){
-                console.log("I'm not undefined.");
-                var relation = rootObject.location.relation;
-                console.log(relation);
-                buildQuestion+= generateOneString(parsingCommand.object.location.entity) +  " " + relation;
-            }
-
-            return buildQuestion;
-        }
-
         export function describeObject(id : string, world : World) : string {
             var res : string = "the ";
             if (id === "floor") {
