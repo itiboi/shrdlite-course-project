@@ -7,7 +7,14 @@
 We implemented the abortion of plan execution in case there is ambiguity originating in the use of the "the" quantifier. The user is then presented with a question telling them how to specify their query. To implement it, we made changes in the following places:
 
     * In Interpreter.ts, in the interpretCommmand() function, we implemented a cascade of if-statements that test the length of the DNF formula that has been generated, depending on whether the "between" keyword is present or not. Could there be ambiguity, it calls the askForClarification() function.
-    * Also in Interpreter.ts, we implemented the askForClarification() function - actually a group of functions to deal with the "between" keyword - to abort program execution and present the user with a question in case of ambiguity. Whether there actually is ambiguity is determined. TODO: continue...
+    * Also in Interpreter.ts, we implemented the askForClarification() function - actually a group of functions to deal with the "between" keyword - to abort program execution and present the user with a question in case of ambiguity. Whether there actually is ambiguity is determined by checking the arguments of the literals in the DNF formula. Since the usage of the "between" keyword results in the production of one conjunction for every possible configuration it needs to be handled separately.
+
+The implementation only handles ambiguity from "the" quantifiers that appear in the top two levels of the nested command structure. In deeper levels it is treated in the same way as the "any" quantifier. Here are a few examples of how to test our implementation:
+
+    * (small world) take the ball
+    * (small world) take the table
+        * put it in the box
+    * (complex world) take the plank under a box
 
 ### Changes to the Grammar
 
