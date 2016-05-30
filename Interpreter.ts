@@ -139,11 +139,6 @@ module Interpreter {
      * @throws An error when no valid interpretations can be found
      */
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
-        // TODO: Handle ambiguity depending on quantifier for target and goal (ask user for clarification)
-        // TODO: Extension for 'all' quantifier (small)
-        // check inside the nested for loop if the quantifier is all
-        // if so, we will have to return a conjunction of goals instead of a disjunction
-
         var interpretation: DNFFormula = [];
         console.log("Command is", cmd);
 
@@ -296,10 +291,7 @@ module Interpreter {
                     if (relation === "between"){
                         for (var nested of nestedCandidates.main) {
                             for (var nested2 of nestedCandidates2.main){
-                                if ((Physics.hasValidLocation(objects[name],"leftof",objects[nested])
-                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested2])) ||
-                                (Physics.hasValidLocation(objects[name],"leftof",objects[nested2])
-                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested]))) {
+                                if (Physics.hasValidLocation(objects[name], "between", objects[nested], objects[nested2])) {
                                     objCandidates.push(name);
                                     break;
                                 }
@@ -307,8 +299,7 @@ module Interpreter {
                         }
                     } else {
                         for (var nested of nestedCandidates.main) {
-                            if (Physics.hasValidLocation(objects[name],relation,objects[nested])) {
-                                console.log("object in hasValidLocation",name);
+                            if (Physics.hasValidLocation(objects[name], relation, objects[nested], undefined)) {
                                 objCandidates.push(name);
                                 break;
                             }
@@ -342,11 +333,13 @@ module Interpreter {
                     for (var goal of goalLocationCandidates.main) {
                         if(cmd.location.relation === "between"){
                             for(var otherGoal of betweenSecondLocationCandidates.main){
-                                pushBetweenConj(goal, target, otherGoal, existingObjects, interpretation);
+                                interpretation.push([createLiteral("between", [target, goal, otherGoal])]);
                             }
                         }
                         else {
-                            if (Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
+                            var targetObj = existingObjects[target];
+                            var goalObj = existingObjects[goal];
+                            if (Physics.isValidGoalLocation(targetObj, cmd.location.relation, goalObj, undefined)){
                                 interpretation.push([createLiteral(cmd.location.relation, [target,goal])]);
                             }
                         }
@@ -398,12 +391,15 @@ module Interpreter {
                         if(hasMainAll && hasGoalAll) {
                             // All combinations have to the satisfied
                             var allConj: Conjunction = [];
-                            for(var main of mainCandidates.main) {
+                            for(var target of mainCandidates.main) {
                                 for(var goal of goalLocationCandidates.main) {
-                                    if (!Physics.isValidGoalLocation(existingObjects[main], relation, existingObjects[goal])) {
+                                    var targetObj = existingObjects[target];
+                                    var goalObj = existingObjects[goal];
+                                    // Since we are creating on large conjunction one infeasible destroys everything
+                                    if (!Physics.isValidGoalLocation(targetObj, relation, goalObj, undefined)) {
                                         return [];
                                     }
-                                    allConj.push(createLiteral(relation, [main, goal]));
+                                    allConj.push(createLiteral(relation, [target, goal]));
                                 }
                             }
 
@@ -459,12 +455,14 @@ module Interpreter {
             console.log(assignment);
             var allConj: Conjunction =[];
             for(var idx = 0; idx < assignment.length ; idx++){
-                var mainC = !invertedRelation ? candidates_1[idx] : candidates_2[assignment[idx]];
-                var goalC = !invertedRelation ? candidates_2[assignment[idx]] : candidates_1[idx] ;
-                if (Physics.isValidGoalLocation(existingObjects[mainC], relation, existingObjects[goalC])){
-                    allConj.push(createLiteral(relation,[mainC,goalC]));
+                var targetC = !invertedRelation ? candidates_1[idx] : candidates_2[assignment[idx]];
+                var goalC =   !invertedRelation ? candidates_2[assignment[idx]] : candidates_1[idx];
+                var targetCObj = existingObjects[targetC];
+                var goalCObj = existingObjects[goalC];
+                if (Physics.isValidGoalLocation(targetCObj, relation, goalCObj, undefined)) {
+                    allConj.push(createLiteral(relation, [targetC, goalC]));
                 }
-                else{
+                else {
                     // Abort if one literal is invalid
                     allConj = [];
                     break;
@@ -487,23 +485,6 @@ module Interpreter {
      */
     function createLiteral(relation: string, args: string[]): Literal {
         return { polarity: true, relation: relation, args: args };
-    }
-
-    /**
-    * Building the interpretation for the between relationship
-    * By creating a conjonction of leftof and rightof literal
-    */
-    function pushBetweenConj (
-        goal:string, target:string, othergoal: string, existingObjects:ObjectDict, interpretation: DNFFormula): void {
-
-        if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
-            //console.log("passed the physics");
-            interpretation.push([createLiteral("leftof", [target, goal]), createLiteral("rightof", [target, othergoal])]);
-        }
-        if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
-            //console.log("passed the physics");
-            interpretation.push([createLiteral("leftof", [target, othergoal]), createLiteral("rightof", [target, goal])]);
-        }
     }
 
     /**
