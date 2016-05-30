@@ -201,7 +201,6 @@ module Interpreter {
                 if(state.holding == null) {
                     break;
                 }
-                //console.log("INSIDE PUT");
                 // Add all feasible goals as interpretation
                 var target = state.holding;
                 for (var goal of goalLocationCandidates.main) {
@@ -235,6 +234,8 @@ module Interpreter {
             throw new Error("Sentence has no valid interpretation in world");
         }
 
+        /** Calling askForClarification() in cases where there might be ambiguity that originates in the use of the THE quantifier. Since we have the BETWEEN keyword, several cases have to be considered and the existence of objects has to be tested before accessing them.
+        */
         if (cmd.entity !== undefined && cmd.entity.quantifier === "the") {
             if (cmd.location !== undefined && cmd.location.relation === "between" && interpretation.length > 2) {
                 console.log("way1");
@@ -262,16 +263,19 @@ module Interpreter {
             }
         }
 
-        // if ((cmd.location!== undefined && cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
-        //     console.log(goalLocationCandidates);
-        //     askForClarification(interpretation, 1, existingObjects);
-        // }
-
         return interpretation;
     }
 
-
-    function buildBetweenConj (goal:string, target:string,othergoal: string, existingObjects:ObjectDict,interpretation:DNFFormula) : DNFFormula {
+    /**
+    Builds the conjuctions specificly for the BETWEEN keyword - it uses the existing LEFTOF and RIGHTOF keywords in both possible combinations.
+    * @param goal One argument of the BETWEEN predicate.
+    * @param othergoal The other argument of the BETWEEN predicate.
+    * @param target The object to be handled.
+    * @param existingObjects A dict of objects that exist in the world.
+    * @param interpretation The DNF formula to append to.
+    * @returns The DNF formula with additional literals appended.
+    */
+    function buildBetweenConj (goal : string, target : string, othergoal : string, existingObjects : ObjectDict, interpretation : DNFFormula) : DNFFormula {
 
         if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
             console.log("passed the physics");
@@ -287,15 +291,35 @@ module Interpreter {
         return interpretation;
     }
 
+    /**
+    Wrapper function to generate user questions for the THE quantifier when not using the BETWEEN keyword.
+    * @param interpretation DNF formula representing the interpretation.
+    * @param column (0 or 1) where in the utterance THE occured.
+    * @param existingObjects A dict of objects that exist in the world.
+    */
     function askForClarification(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
         askForGeneralClarification(interpretation, column, existingObjects, 0, 1);
     }
 
+    /**
+    Wrapper function to generate user questions for the THE quantifier when using the BETWEEN keyword.
+    * @param interpretation DNF formula representing the interpretation.
+    * @param column (0 or 1) where in the utterance THE occured.
+    * @param existingObjects A dict of objects that exist in the world.
+    */
     function askForBetweenClarification(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
         askForGeneralClarification(interpretation, column, existingObjects, 0, 2);
         askForGeneralClarification(interpretation, column, existingObjects, 1, 2);
     }
 
+    /**
+    Generates a user question in case there is ambiguity originating in the usage of the THE quantifier. Whether that is actually the case is checked.
+    * @param interpretation DNF formula representing the interpretation.
+    * @param column (0 or 1) where in the utterance THE occured.
+    * @param existingObjects A dict of objects that exist in the world.
+    * @param startingPosition The conjunction to start the check with.
+    * @param stepSize How many conjunctions to step ahead in each step check.
+    */
     function askForGeneralClarification(interpretation : DNFFormula, column : number, existingObjects : ObjectDict, startingPosition : number, stepSize : number){
         var candidateSet = new collections.Set<string>();
         var descriptionLookUp = new collections.Dictionary<string, string>();
