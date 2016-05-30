@@ -381,21 +381,41 @@ module Interpreter {
                 var hasMainAll = (cmd.entity != undefined && cmd.entity.quantifier == "all");
                 var hasGoalAll = (cmd.location.entity.quantifier == "all");
                 var hasBetweenGoalAll = (cmd.location.entity2 != undefined && cmd.location.entity2.quantifier == "all");
+                var relation = cmd.location.relation;
 
                 console.log("hasMainAll", hasMainAll);
                 console.log("hasGoalAll", hasGoalAll);
                 console.log("hasBetweenGoalAll", hasBetweenGoalAll);
 
-                switch (cmd.location.relation) {
+                switch (relation) {
                     case "leftof":
                     case "rightof":
                     case "beside":
                     case "above":
                     case "under":
-
-                        break;
                     case "inside":
                     case "ontop":
+                        if(hasMainAll && hasGoalAll) {
+                            // All combinations have to the satisfied
+                            var allConj: Conjunction = [];
+                            for(var main of mainCandidates.main) {
+                                for(var goal of goalLocationCandidates.main) {
+                                    allConj.push(createLiteral(relation, [main, goal]));
+                                }
+                            }
+
+                            interpretation.push(allConj);
+                        }
+                        else if(hasMainAll) {
+                            // All assignments of main objects to one goal
+                            interpretation = createOneSidedAllDNF(
+                                mainCandidates.main, goalLocationCandidates.main, existingObjects, relation, false);
+                        }
+                        else {
+                            // All assignments of goals objects to one main
+                            interpretation = createOneSidedAllDNF(
+                                goalLocationCandidates.main, mainCandidates.main, existingObjects, relation, true);
+                        }
 
                         break;
                     case "between":
@@ -421,25 +441,46 @@ module Interpreter {
     }
 
     /**
-    * Generate DNF for the all quantifier
+    * Generate DNF for the occurrence of the all quantifier on one side of the relation.
     */
-    function generateAllDNFOld(targets: string[], goals: string[],location:string, existingObjects: ObjectDict) : DNFFormula {
-        var allCombinations : number[][];
-        var allDNF : DNFFormula = [];
-        allCombinations = getCombinations(targets.length, goals.length-1).toArray();
-        for(var perm of allCombinations) {
-          var conj : Conjunction = [];
-          for (var i = 0; i < goals.length; i++) {
-            conj.push({polarity : true, relation : location, args : [targets[i], goals[perm[i]]]});
-          }
+    function createOneSidedAllDNF(
+        candidates_1 : string[],
+        candidates_2 : string[],
+        existingObjects : ObjectDict,
+        relation : string,
+        invertedRelation : boolean) : DNFFormula {
 
-          allDNF.push(conj);
-        }
-        return allDNF;
+        var interpretation: DNFFormula = [];
+        var assignments = getCombinations(candidates_1.length, candidates_2.length-1);
+        assignments.forEach((assignment) => {
+            console.log(assignment);
+            var allConj: Conjunction =[];
+            for(var idx = 0; idx < assignment.length ; idx++){
+                var mainC = !invertedRelation ? candidates_1[idx] : candidates_2[assignment[idx]];
+                var goalC = !invertedRelation ? candidates_2[assignment[idx]] : candidates_1[idx] ;
+                if (Physics.isValidGoalLocation(existingObjects[mainC], relation, existingObjects[goalC])){
+                    allConj.push(createLiteral(relation,[mainC,goalC]));
+                }
+                else{
+                    // Abort if one literal is invalid
+                    allConj = [];
+                    break;
+                }
+
+            }
+
+            // Only add possible assignments
+            if(allConj.length != 0){
+                console.log("Conjunction",allConj);
+                interpretation.push(allConj);
+            }
+        });
+
+        return interpretation;
     }
 
     /**
-     * Shortcut method for creating a literal. 
+     * Shortcut method for creating a literal.
      */
     function createLiteral(relation: string, args: string[]): Literal {
         return { polarity: true, relation: relation, args: args };
@@ -460,38 +501,6 @@ module Interpreter {
             //console.log("passed the physics");
             interpretation.push([createLiteral("leftof", [target, othergoal]), createLiteral("rightof", [target, goal])]);
         }
-    }
-
-    function addPermutations(a : number[], l: number, r : number, set : collections.Set<number[]>) : void {
-        if (l == r) {
-            set.add(a);
-        }
-        else {
-            for (var i : number = l; i <= r; i++) {
-                var tmp : number;
-                //swap lth and ith
-                tmp = a[l];
-                a[l] = a[i];
-                a[i] = tmp;
-
-                addPermutations(a, l+1, r, set);
-
-                //swap lth and ith
-                tmp = a[l];
-                a[l] = a[i];
-                a[i] = tmp;
-            }
-        }
-    }
-
-    function getPermutations(n : number) : collections.Set<number[]> {
-        var set = new collections.Set<number[]>();
-        var a : number[];
-        for (var i = 0; i < n; i++){
-            a.push(i);
-        }
-        addPermutations(a, 0, a.length-1, set);
-        return set;
     }
 
     /**
