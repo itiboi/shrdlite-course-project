@@ -2,6 +2,10 @@
 
 ## Extensions
 
+### Heuristics
+
+The heuristic we implemented in Planner.ts does take the height of the stacks into account (which according to  http://chalmersgu-ai-course.github.io/shrdlite.html constitutes an extension). The way we take this into account is by looking at the number of objects that are above the object that is being moved and the possible goal objects. For every such object we add 2 to our heuristic, since it needs to be picked up and dropped. We take the minimum over the heuristic values for all possible goal objects and the maximum of goal heuristic and the heuristic for the object to be moved.
+
 ### Disambiguation for "the" quantifier
 
 We implemented the abortion of plan execution in case there is ambiguity originating in the use of the "the" quantifier. The user is then presented with a question telling them how to specify their query. To implement it, we made changes in the following places:
