@@ -94,7 +94,7 @@ module Shrdlite {
                     });
             }
             else{
-                world.printError("Interpretation error", err);
+                world.printError("Interpretation error", err.message);
             }
             return;
         }

@@ -179,7 +179,9 @@ module Interpreter {
         // Generate interpretation depending on all quantifier occurres.
         var generateAll = false;
         if((cmd.entity == undefined || cmd.entity.quantifier != "all") &&
-           (cmd.location == undefined || cmd.location.entity.quantifier != "all")) {
+           (cmd.location == undefined || cmd.location.entity.quantifier != "all") &&
+           (cmd.location == undefined || cmd.location.entity2 == undefined || cmd.location.entity2.quantifier != "all")) {
+            console.log("No all quantifier found");
             interpretation = generateAnyDNF(
                 cmd, mainCandidates, goalLocationCandidates, betweenSecondLocationCandidates, existingObjects, state);
         }
@@ -375,22 +377,47 @@ module Interpreter {
         switch (cmd.command) {
             case "move":
             case "put":
+                // Determine where all occurs everywhere
+                var hasMainAll = (cmd.entity != undefined && cmd.entity.quantifier == "all");
+                var hasGoalAll = (cmd.location.entity.quantifier == "all");
+                var hasBetweenGoalAll = (cmd.location.entity2 != undefined && cmd.location.entity2.quantifier == "all");
+
+                console.log("hasMainAll", hasMainAll);
+                console.log("hasGoalAll", hasGoalAll);
+                console.log("hasBetweenGoalAll", hasBetweenGoalAll);
+
+                switch (cmd.location.relation) {
+                    case "leftof":
+                    case "rightof":
+                    case "beside":
+                    case "above":
+                    case "under":
+
+                        break;
+                    case "inside":
+                    case "ontop":
+
+                        break;
+                    case "between":
+                        break;
+                }
+
                 break;
             case "take":
                 // Simple: we can only take one object
                 if(mainCandidates.main.length > 1) {
-                    throw new Error("Impossible: Only one object can be held at a time!");
+                    throw new Error("Only one object can be held at a time!");
                 }
 
-                // Prevent floor
+                // Prevent floor from being picked
                 if(mainCandidates.main[0] != "floor") {
-
+                    interpretation.push([createLiteral("holding", mainCandidates.main)]);
                 }
 
                 break;
         }
 
-        return [];
+        return interpretation;
     }
 
     /**
@@ -467,23 +494,29 @@ module Interpreter {
         return set;
     }
 
+    /**
+     * Retrieve all possible arrays with given length containing only numbers from 0 to highest.
+     */
+    function getCombinations(length : number, highest : number) : collections.Set<number[]> {
+        var res = new collections.Set<number[]>();
+        addCombinations([], length, highest, res);
+        return res;
+    }
+
+    /**
+     * Internal recursive helper method for retrieving all possible combinations.
+     */
     function addCombinations(a : number[], length : number, highest : number, set : collections.Set<number[]>) : void {
         if (a.length == length){
             set.add(a);
         }
         else {
             for (var i = 0; i <= highest; i++) {
-                var b : number[] = a;
+                var b : number[] = a.slice();
                 b.push(i);
                 addCombinations(b, length, highest, set);
             }
         }
-    }
-
-    function getCombinations(length : number, highest : number) : collections.Set<number[]> {
-        var res = new collections.Set<number[]>();
-        addCombinations([], length, highest, res);
-        return res;
     }
 
     //-------------------------------------------------------//
