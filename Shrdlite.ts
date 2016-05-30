@@ -174,22 +174,22 @@ module Shrdlite {
             var res : string = "";
             console.log("generateObjectString", obj);
             if (!obj.location) {
-            if (obj.size) {
-                res += obj.size;
+                if (obj.size) {
+                    res += obj.size;
+                }
+                if (obj.color) {
+                    res += obj.color;
+                }
+                if (obj.form) {
+                    res += obj.form;
+                }
+            } else {
+                if (obj.object) {
+                    res += generateObjectString(obj.object);
+                    res += " that is ";
+                    res += generateLocationString(obj.location);
+                }
             }
-            if (obj.color) {
-                res += obj.color;
-            }
-            if (obj.form) {
-                res += obj.form;
-            }
-        } else {
-            if (obj.object) {
-                res += generateObjectString(obj.object);
-                res += " that is ";
-                res += generateLocationString(obj.location);
-            }
-        }
             return res;
         }
 
