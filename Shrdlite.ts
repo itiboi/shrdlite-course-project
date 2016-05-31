@@ -141,6 +141,9 @@ module Shrdlite {
             throw new Error(userQuestion);
         }
 
+        /*
+        The following functions are basically stringifiers for the objects that the parser returns. Their call structure resembles the structure of the parse objects.
+        */
         function generateInterpretationString(interpretation : Interpreter.InterpretationResult) : string {
             var res : string = "";
             console.log("generatingInterpretationString", interpretation);
