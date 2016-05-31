@@ -184,7 +184,6 @@ module Interpreter {
             console.log("Taking care of the all quantifier");
             interpretation = generateAllDNF(
                 cmd, mainCandidates, goalLocationCandidates, betweenSecondLocationCandidates, existingObjects, state);
-            // TODO: Filter out infeasible combinations.
         }
 
         if (interpretation.length == 0) {
@@ -192,32 +191,36 @@ module Interpreter {
             throw new Error("Sentence has no valid interpretation in world");
         }
 
+        /** Calling askForClarification() in cases where there might be ambiguity that originates in the use of the THE quantifier. Since we have the BETWEEN keyword, several cases have to be considered and the existence of objects has to be tested before accessing them.
+        */
         if (cmd.entity !== undefined && cmd.entity.quantifier === "the") {
             if (cmd.location !== undefined && cmd.location.relation === "between" && interpretation.length > 2) {
-                throwClarificationError(interpretation, 0, existingObjects);
-            } else if (interpretation.length > 1) {
+                console.log("way1");
+                throwBetweenClarificationError(interpretation, 0, existingObjects);
+            } else if ((cmd.location === undefined || cmd.location.relation !== "between") && interpretation.length > 1) {
+                console.log("way2");
                 throwClarificationError(interpretation, 0, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.entity.quantifier === "the") {
             if (cmd.location.relation === "between" && interpretation.length > 2) {
-                throwClarificationError(interpretation, 0, existingObjects);
-            } else if (interpretation.length > 1) {
-                throwClarificationError(interpretation, 0, existingObjects);
+                console.log("way3");
+                // FIXME
+                throwBetweenClarificationError(interpretation, 1, existingObjects);
+            } else if (cmd.location.relation !== "between" && interpretation.length > 1) {
+                console.log("way4");
+                throwClarificationError(interpretation, 1, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.relation === "between" && cmd.location.entity2.quantifier === "the") {
             if (interpretation.length > 2) {
-                throwClarificationError(interpretation, 0, existingObjects);
+                console.log("way5");
+                // FIXME
+                throwBetweenClarificationError(interpretation, 1, existingObjects);
             }
         }
-
-        // if ((cmd.location!== undefined && cmd.location.entity.quantifier == "the") && interpretation.length > 1) {
-        //     console.log(goalLocationCandidates);
-        //     askForClarification(interpretation, 1, existingObjects);
-        // }
 
         return interpretation;
     }
@@ -257,6 +260,7 @@ module Interpreter {
 
         return existingObjects;
     }
+
     /**
     * Find all candidates for given entity.
     */
@@ -623,18 +627,47 @@ module Interpreter {
     // Functions for ambiguity                               //
     //-------------------------------------------------------//
 
+    /**
+    Wrapper function to generate user questions for the THE quantifier when not using the BETWEEN keyword.
+    * @param interpretation DNF formula representing the interpretation.
+    * @param column (0 or 1) where in the utterance THE occured.
+    * @param existingObjects A dict of objects that exist in the world.
+    */
+    function throwClarificationError(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
+        throwGeneralClarificationError(interpretation, column, existingObjects, 0, 1);
+    }
 
     /**
-     * Build the clarification question for object ambiguity and throws it.
+     *Wrapper function to generate user questions for the THE quantifier when using the BETWEEN keyword.
+     * @param interpretation DNF formula representing the interpretation.
+     * @param column (0 or 1) where in the utterance THE occured.
+     * @param existingObjects A dict of objects that exist in the world.
      */
-    function throwClarificationError(interpretation: DNFFormula, column: number, existingObjects: ObjectDict){
+    function throwBetweenClarificationError(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
+        throwGeneralClarificationError(interpretation, column, existingObjects, 0, 2);
+        throwGeneralClarificationError(interpretation, column, existingObjects, 1, 2);
+    }
+
+    /**
+    Generates a user question in case there is ambiguity originating in the usage of the THE quantifier. Whether that is actually the case is checked.
+    * @param interpretation DNF formula representing the interpretation.
+    * @param column (0 or 1) where in the utterance THE occured.
+    * @param existingObjects A dict of objects that exist in the world.
+    * @param startingPosition The conjunction to start the check with.
+    * @param stepSize How many conjunctions to step ahead in each step check.
+    */
+    function throwGeneralClarificationError(
+        interpretation : DNFFormula, column : number, existingObjects : ObjectDict, startingPosition : number, stepSize : number) {
         var candidateSet = new collections.Set<string>();
         var descriptionLookUp = new collections.Dictionary<string, string>();
 
-        for (var conj of interpretation) {
+        console.log("started disambiguation.");
+        console.log(interpretation);
+
+        for (var i = startingPosition; i < interpretation.length; i+=stepSize) {
             var firstLiteral : Literal;
             var candidateID : string;
-            firstLiteral = conj[0];
+            firstLiteral = interpretation[i][0];
             candidateID = firstLiteral.args[column];
             if (!candidateSet.contains(candidateID)) {
                 var descrString : string = "the ";
@@ -649,6 +682,8 @@ module Interpreter {
             }
         }
 
+        console.log(candidateSet);
+
         if (candidateSet.size() < 2) {
             return;
         }
@@ -662,7 +697,6 @@ module Interpreter {
             userQuestion += desc;
             firstTime = false;
         }
-
         throw new Error(userQuestion);
     }
 }

@@ -92,12 +92,12 @@ module Shrdlite {
                     (message:string) => {
                         world.printError("- "+message+"?");
                     });
+                }
+                else {
+                    world.printError("Interpretation error", err.message);
+                }
+                return;
             }
-            else{
-                world.printError("Interpretation error", err.message);
-            }
-            return;
-        }
 
         // Planning
         try {
@@ -127,34 +127,85 @@ module Shrdlite {
     }
 
     export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
-        var userQuestion: string = "[ambiguity]";
-        var firstTime : boolean = true;
-        var erstesMal : boolean = true;
-        var forstaGang : boolean = true;
-        for(var dnf of interpretations){
-            if (!forstaGang) {
-                userQuestion+= "|";
+        var userQuestion : string = "Did you mean to ";
+
+        var firstRun : boolean = true;
+        for(var interpretation of interpretations){
+            if (!firstRun){
+                userQuestion += ", or did you mean to ";
             }
-            erstesMal = true;
-            for(var conjList of dnf.interpretation){
-                if (!erstesMal) {
-                    userQuestion+= "|";
-                }
-                firstTime = true;
-                for(var conj of conjList){
-                    if (!firstTime) {
-                        userQuestion += " and "
-                    }
-                    userQuestion += describeObject(conj.args[0], world);
-                    userQuestion += " to be moved " + conj.relation + " ";
-                    userQuestion += describeObject(conj.args[1], world);
-                    firstTime = false;
-                }
-                erstesMal = false;
-            }
-            forstaGang = false;
+            userQuestion += generateInterpretationString(interpretation);
+            firstRun = false;
         }
+        userQuestion += "?";
         throw new Error(userQuestion);
+    }
+
+    function generateInterpretationString(interpretation : Interpreter.InterpretationResult) : string {
+        var res : string = "";
+        console.log("generatingInterpretationString", interpretation);
+        res += interpretation.parse.command + " ";
+
+        // do object
+        if (interpretation.parse.entity !== undefined) {
+            res += generateEntityString(interpretation.parse.entity);
+        }
+
+        res += " ";
+
+        // do location
+        res += generateLocationString(interpretation.parse.location);
+
+        return res;
+    }
+
+    function generateEntityString(entity : Parser.Entity) : string {
+        var res : string = "";
+        console.log("generateEntityString", entity);
+        res += entity.quantifier;
+        res += " ";
+        if (entity.object !== undefined) {
+            res += generateObjectString(entity.object);
+        }
+        return res;
+    }
+
+    function generateObjectString(obj : Parser.Object) : string {
+        var res : string = "";
+        console.log("generateObjectString", obj);
+        if (!obj.location) {
+            if (obj.size) {
+                res += obj.size;
+            }
+            if (obj.color) {
+                res += obj.color;
+            }
+            if (obj.form) {
+                res += obj.form;
+            }
+        } else {
+            if (obj.object) {
+                res += generateObjectString(obj.object);
+                res += " that is ";
+                res += generateLocationString(obj.location);
+            }
+        }
+        return res;
+    }
+
+    function generateLocationString(location : Parser.Location) : string {
+        var res : string = "";
+        console.log("generateLocationString", location);
+
+        res += location.relation;
+        res += " ";
+        res += generateEntityString(location.entity);
+
+        if (location.relation === "between") {
+            res += "and";
+            res += generateEntityString(location.entity2);
+        }
+        return res;
     }
 
     export function describeObject(id : string, world : World) : string {
