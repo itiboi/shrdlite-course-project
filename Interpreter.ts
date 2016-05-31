@@ -408,6 +408,12 @@ module Interpreter {
                                 goalLocationCandidates.main, mainCandidates.main, existingObjects, relation, true);
                         }
 
+                        // Filter if the conjunction of literal is valid from the physics
+                        // counter exemple : ontop(i,g) & ontop(j,g) | ontop(i,g) & ontop(j,h)
+                        if(relation=="ontop" || relation == "inside"){
+                            interpretation = filterInvalidConjunction(interpretation);
+                        }
+
                         break;
                     case "between":
                         // Ugly checking for each combination but is the easiest way
@@ -580,6 +586,27 @@ module Interpreter {
     function createLiteral(relation: string, args: string[]): Literal {
         return { polarity: true, relation: relation, args: args };
     }
+
+    /**
+     * Filter invalid conjunctions
+     */
+    function filterInvalidConjunction(interpretation : DNFFormula): DNFFormula {
+        return interpretation.filter(
+            (conjunction)=> {
+                var arg1 = conjunction.map(
+                    (literal,idx,obj) => literal.args[0]
+                );
+                var arg2 = conjunction.map(
+                    (literal,idx,obj) => literal.args[1]
+                );
+                var checkForDuplicate = (arg : string[]) => (arg.map((object)=>(arg.filter((o)=> (o == object)).length > 1)).filter((o)=>(o)).length > 1);
+                return !(checkForDuplicate(arg1))
+                && !(checkForDuplicate(arg2));
+
+            }
+        )
+    }
+
 
     /**
      * Retrieve all possible arrays with given length containing only numbers from 0 to highest.
