@@ -418,6 +418,31 @@ module Interpreter {
 
                         break;
                     case "between":
+                        // Ugly checking for each combination but is the easiest way
+                        if(hasMainAll && hasGoalAll && hasBetweenGoalAll) {
+                            // All combinations at a time have to the satisfied
+                        }
+                        // Two have the all quantifier
+                        else if (!hasMainAll && hasGoalAll && hasBetweenGoalAll) {
+
+                        }
+                        else if (hasMainAll && !hasGoalAll && hasBetweenGoalAll) {
+                            
+                        }
+                        else if (hasMainAll && hasGoalAll && !hasBetweenGoalAll) {
+                            
+                        }
+                        // Only one is missing the all quantifier
+                        else if (hasMainAll && !hasGoalAll && !hasBetweenGoalAll) {
+                            
+                        }
+                        else if (!hasMainAll && hasGoalAll && !hasBetweenGoalAll) {
+                            
+                        }
+                        else if (!hasMainAll && !hasGoalAll && hasBetweenGoalAll) {
+                            
+                        }
+
                         break;
                 }
 
