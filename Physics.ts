@@ -69,7 +69,7 @@ module Physics {
             case "under":
                 return c1.stackId == c2.stackId && c1.stackLocation < c2.stackLocation;
             case "beside":
-                return hasValidLocation(c1, "leftof", c2) || hasValidLocation(c1, "rightof", c2);
+                return c1.stackId == (c2.stackId - 1) || c1.stackId == (c2.stackId + 1);
             case "above":
                 return c1.stackId == c2.stackId && c1.stackLocation > c2.stackLocation;
             case "holding":
