@@ -421,26 +421,41 @@ module Interpreter {
                         // Ugly checking for each combination but is the easiest way
                         if(hasMainAll && hasGoalAll && hasBetweenGoalAll) {
                             // All combinations at a time have to the satisfied
+                            var allConj: Conjunction = [];
+                            mainCandidates.main.map((target) => {
+                                goalLocationCandidates.main.map((goal1) => {
+                                    betweenSecondLocationCandidates.main.map((goal2) => {
+                                        allConj.push(createLiteral("between", [target, goal1, goal2]));
+                                    });
+                                });
+                            });
+                            interpretation.push(allConj);
                         }
                         // Two have the all quantifier
                         else if (!hasMainAll && hasGoalAll && hasBetweenGoalAll) {
-
+                            interpretation = createTwoSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 0);
                         }
                         else if (hasMainAll && !hasGoalAll && hasBetweenGoalAll) {
-                            
+                            interpretation = createTwoSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 1);
                         }
                         else if (hasMainAll && hasGoalAll && !hasBetweenGoalAll) {
-                            
+                            interpretation = createTwoSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 2);
                         }
                         // Only one is missing the all quantifier
                         else if (hasMainAll && !hasGoalAll && !hasBetweenGoalAll) {
-                            
+                            interpretation = createOneSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 0);
                         }
                         else if (!hasMainAll && hasGoalAll && !hasBetweenGoalAll) {
-                            
+                            interpretation = createOneSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 1);
                         }
                         else if (!hasMainAll && !hasGoalAll && hasBetweenGoalAll) {
-                            
+                            interpretation = createOneSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 2);
                         }
 
                         break;
@@ -492,7 +507,6 @@ module Interpreter {
                     allConj = [];
                     break;
                 }
-
             }
 
             // Only add possible assignments
@@ -500,6 +514,74 @@ module Interpreter {
                 console.log("Conjunction",allConj);
                 interpretation.push(allConj);
             }
+        });
+
+        return interpretation;
+    }
+
+    /**
+    * Generate DNF for the occurrence of two all quantifier in a between relation.
+    */
+    function createTwoSidedBetweenAllDNF(
+        candidates :string[][],
+        notAllCandidate : number) : DNFFormula {
+
+        var allCandidate1 = (notAllCandidate + 1) % 3;
+        var allCandidate2 = (notAllCandidate + 2) % 3;
+        var interpretation: DNFFormula = [];
+        getCombinations(
+            candidates[allCandidate1].length * candidates[allCandidate2].length,
+            candidates[notAllCandidate].length - 1)
+        .forEach((assignment) => {
+            // Create conjunction for each possible satisfaction assignment
+            var allConj: Conjunction =[];
+            assignment.map((idx, pairIdx) => {
+                var allIdx1 = Math.floor(pairIdx / candidates[allCandidate2].length);
+                var allIdx2 = pairIdx % candidates[allCandidate1].length;
+                console.log("idx", idx, "pairIdx", pairIdx, "non1", allIdx1, "non2", allIdx2);
+
+                var getIdx  = (n: number) => ((notAllCandidate == n) ? idx : (notAllCandidate == (n+1)%3) ? allIdx1 : allIdx2);
+                var targetC = candidates[0][getIdx(0)];
+                var goal1   = candidates[1][getIdx(1)];
+                var goal2   = candidates[2][getIdx(2)];
+                allConj.push(createLiteral("between", [targetC, goal1, goal2]));
+            });
+
+            interpretation.push(allConj);
+        });
+
+        return interpretation;
+    }
+
+    /**
+    * Generate DNF for the occurrence of one all quantifier in a between relation.
+    */
+    function createOneSidedBetweenAllDNF(
+        candidates : string[][],
+        allCandidate : number) : DNFFormula {
+
+        var nonCandidate1 = (allCandidate + 1) % 3;
+        var nonCandidate2 = (allCandidate + 2) % 3;
+        var interpretation: DNFFormula = [];
+        getCombinations(
+            candidates[allCandidate].length,
+            candidates[nonCandidate1].length * candidates[nonCandidate2].length-1)
+        .forEach((assignment) => {
+            // Create conjunction for each possible satisfaction assignment
+            var allConj: Conjunction =[];
+            assignment.map((pairIdx,idx) => {
+                var nonIdx1 = Math.floor(pairIdx / candidates[nonCandidate2].length);
+                var nonIdx2 = pairIdx % candidates[nonCandidate1].length;
+                console.log("idx", idx, "pairIdx", pairIdx, "non1", nonIdx1, "non2", nonIdx2);
+
+                var getIdx  = (n: number) => ((allCandidate == n) ? idx : (allCandidate == (n+1)%3) ? nonIdx1 : nonIdx2);
+                var targetC = candidates[0][getIdx(0)];
+                var goal1   = candidates[1][getIdx(1)];
+                var goal2   = candidates[2][getIdx(2)];
+                allConj.push(createLiteral("between", [targetC, goal1, goal2]));
+            });
+
+            interpretation.push(allConj);
         });
 
         return interpretation;

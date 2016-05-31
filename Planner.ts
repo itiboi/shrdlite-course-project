@@ -91,7 +91,7 @@ module Planner {
             startNode,
             (n) => isGoal(n, interpretation, state.objects),
             (n) => heuristic(n, interpretation, state.objects),
-            1 // TODO?
+            3 // TODO?
         )
 
         // Check for timeout
