@@ -197,7 +197,11 @@ module Shrdlite {
         var res : string = "";
         console.log("generateLocationString", location);
 
-        res += location.relation;
+        if (location.relation === "ontop") {
+            res += "on top";
+        } else {
+            res += location.relation;
+        }
         res += " ";
         res += generateEntityString(location.entity);
 
