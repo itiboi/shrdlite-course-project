@@ -1,10 +1,23 @@
 # README-SHRDLITE for _BetaGo_
 
+## Basic implementation
+
+### Semantics of the keywords
+
+What follows is a description of how we understood some of the keywords to be implemented. These are the keywords that we thought of as slightly ambiguous:
+
+    * To us, "leftof" and "rightof" do not imply that two objects are right beside each other, but only a is left of b if and only if a's stackId is smaller that b's.
+    * To us, "beside" means that the difference of the respective stackIDs is exactly 1. The vertical position of the objects does not matter however.
+
 ## Extensions
 
-### Heuristics
+### Describing planner actions
 
-The heuristic we implemented in Planner.ts does take the height of the stacks into account (which according to  http://chalmersgu-ai-course.github.io/shrdlite.html constitutes an extension). The way we take this into account is by looking at the number of objects that are above the object that is being moved and the possible goal objects. For every such object we add 2 to our heuristic, since it needs to be picked up and dropped. We take the minimum over the heuristic values for all possible goal objects and the maximum of goal heuristic and the heuristic for the object to be moved.
+We implemented output of what the planner does to achieve a goal. When doing so, it gives reasonably concise descriptions of the objects it is handling, that is instead of printing all properties of an object, it only prints the properties needed to distinguish it from other objects of the same form in the current world. Our implementation can be tested with any utterance that results in a valid plan, but one example is:
+
+    * (small world) move all balls inside a large box
+
+Notice how it prints "Picking up the black ball" and omits the fact that the ball is *small*, as there is no other black ball in this world.
 
 ### Disambiguation for "the" quantifier
 
