@@ -179,9 +179,11 @@ module Shrdlite {
             if (!obj.location) {
                 if (obj.size) {
                     res += obj.size;
+                    res += " ";
                 }
                 if (obj.color) {
                     res += obj.color;
+                    res += " ";
                 }
                 if (obj.form) {
                     res += obj.form;
