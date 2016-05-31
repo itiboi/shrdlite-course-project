@@ -54,6 +54,11 @@ In order to test our implementation one can use "between" just as one would use 
     * (medium world) take the brick between a pyramid and the ball
 
 ### Disambiguation for parse ambiguity
+
+For some utterances there might be more than one valid parse tree in the given grammar. We decided that we trust the user's intelligence in the sense that should there only be one parse tree that results in a valid interpretation in the current world, we do not ask the user questions. Should there be more than one parse tree resulting in a valid interpretation, plan execution gets aborted and we present the user with a clarification question. The user can then modify their command so that it is unambiguous. To implement this behavior, we made the following changes:
+
+    * TODO.
+
 TODO
 
 ### Handling the "all" quantifier
