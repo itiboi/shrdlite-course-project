@@ -99,145 +99,148 @@ module Shrdlite {
                 return;
             }
 
-        // Planning
-        try {
-            var plans : Planner.PlannerResult[] = Planner.plan(interpretations, world.currentState);
-            world.printDebugInfo("Found " + plans.length + " plans");
-            plans.forEach((result, n) => {
-                world.printDebugInfo("  (" + n + ") " + Planner.stringify(result));
-            });
+            // Planning
+            try {
+                var plans : Planner.PlannerResult[] = Planner.plan(interpretations, world.currentState);
+                world.printDebugInfo("Found " + plans.length + " plans");
+                plans.forEach((result, n) => {
+                    world.printDebugInfo("  (" + n + ") " + Planner.stringify(result));
+                });
 
-            if (plans.length > 1) {
-                // several plans were found -- how should this be handled?
-                // this means that we have several interpretations,
-                // should we throw an ambiguity error?
-                // ... throw new Error("Ambiguous utterance");
-                // or should we select the interpretation with the shortest plan?
-                // ... plans.sort((a, b) => {return a.length - b.length});
+                if (plans.length > 1) {
+                    // several plans were found -- how should this be handled?
+                    // this means that we have several interpretations,
+                    // should we throw an ambiguity error?
+                    // ... throw new Error("Ambiguous utterance");
+                    // or should we select the interpretation with the shortest plan?
+                    // ... plans.sort((a, b) => {return a.length - b.length});
+                }
             }
-        }
-        catch(err) {
-            world.printError("Planning error", err);
-            return;
-        }
-
-        var finalPlan : string[] = plans[0].plan;
-        world.printDebugInfo("Final plan: " + finalPlan.join(", "));
-        return finalPlan;
-    }
-
-    export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
-        var userQuestion : string = "Did you mean to ";
-
-        var firstRun : boolean = true;
-        for(var interpretation of interpretations){
-            if (!firstRun){
-                userQuestion += ", or did you mean to ";
-            }
-            userQuestion += generateInterpretationString(interpretation);
-            firstRun = false;
-        }
-        userQuestion += "?";
-        throw new Error(userQuestion);
-    }
-
-    function generateInterpretationString(interpretation : Interpreter.InterpretationResult) : string {
-        var res : string = "";
-        console.log("generatingInterpretationString", interpretation);
-        res += interpretation.parse.command + " ";
-
-        // do object
-        if (interpretation.parse.entity !== undefined) {
-            res += generateEntityString(interpretation.parse.entity);
-        }
-
-        res += " ";
-
-        // do location
-        res += generateLocationString(interpretation.parse.location);
-
-        return res;
-    }
-
-    function generateEntityString(entity : Parser.Entity) : string {
-        var res : string = "";
-        console.log("generateEntityString", entity);
-        res += entity.quantifier;
-        res += " ";
-        if (entity.object !== undefined) {
-            res += generateObjectString(entity.object);
-        }
-        return res;
-    }
-
-    function generateObjectString(obj : Parser.Object) : string {
-        var res : string = "";
-        console.log("generateObjectString", obj);
-        if (!obj.location) {
-            if (obj.size) {
-                res += obj.size;
-            }
-            if (obj.color) {
-                res += obj.color;
-            }
-            if (obj.form) {
-                res += obj.form;
-            }
-        } else {
-            if (obj.object) {
-                res += generateObjectString(obj.object);
-                res += " that is ";
-                res += generateLocationString(obj.location);
-            }
-        }
-        return res;
-    }
-
-    function generateLocationString(location : Parser.Location) : string {
-        var res : string = "";
-        console.log("generateLocationString", location);
-
-        if (location.relation === "ontop") {
-            res += "on top";
-        } else {
-            res += location.relation;
-        }
-        res += " ";
-        res += generateEntityString(location.entity);
-
-        if (location.relation === "between") {
-            res += "and";
-            res += generateEntityString(location.entity2);
-        }
-        return res;
-    }
-
-    export function describeObject(id : string, world : World) : string {
-        var res : string = "the ";
-        if (id === "floor") {
-            res += "floor";
-        } else {
-            res += world.currentState.objects[id].size + " ";
-            res += world.currentState.objects[id].color + " ";
-            res += world.currentState.objects[id].form;
-        }
-        return res;
-    }
-
-    /** This is a convenience function that recognizes strings
-    * of the form "p r r d l p r d"
-    */
-    export function splitStringIntoPlan(planstring : string) : string[] {
-        var plan : string[] = planstring.trim().split(/\s+/);
-        var actions : {[act:string] : string}
-        = {p:"Picking", d:"Dropping", l:"Going left", r:"Going right"};
-        for (var i = plan.length-1; i >= 0; i--) {
-            if (!actions[plan[i]]) {
+            catch(err) {
+                world.printError("Planning error", err);
                 return;
             }
-            plan.splice(i, 0, actions[plan[i]]);
-        }
-        return plan;
-    }
 
-}
+            var finalPlan : string[] = plans[0].plan;
+            world.printDebugInfo("Final plan: " + finalPlan.join(", "));
+            return finalPlan;
+        }
+
+        export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
+            var userQuestion : string = "Did you mean to ";
+
+            var firstRun : boolean = true;
+            for(var interpretation of interpretations){
+                if (!firstRun){
+                    userQuestion += ", or did you mean to ";
+                }
+                userQuestion += generateInterpretationString(interpretation);
+                firstRun = false;
+            }
+            userQuestion += "?";
+            throw new Error(userQuestion);
+        }
+
+        /*
+        The following functions are basically stringifiers for the objects that the parser returns. Their call structure resembles the structure of the parse objects.
+        */
+        function generateInterpretationString(interpretation : Interpreter.InterpretationResult) : string {
+            var res : string = "";
+            console.log("generatingInterpretationString", interpretation);
+            res += interpretation.parse.command + " ";
+
+            // do object
+            if (interpretation.parse.entity !== undefined) {
+                res += generateEntityString(interpretation.parse.entity);
+            }
+
+            res += " ";
+
+            // do location
+            res += generateLocationString(interpretation.parse.location);
+
+            return res;
+        }
+
+        function generateEntityString(entity : Parser.Entity) : string {
+            var res : string = "";
+            console.log("generateEntityString", entity);
+            res += entity.quantifier;
+            res += " ";
+            if (entity.object !== undefined) {
+                res += generateObjectString(entity.object);
+            }
+            return res;
+        }
+
+        function generateObjectString(obj : Parser.Object) : string {
+            var res : string = "";
+            console.log("generateObjectString", obj);
+            if (!obj.location) {
+                if (obj.size) {
+                    res += obj.size;
+                }
+                if (obj.color) {
+                    res += obj.color;
+                }
+                if (obj.form) {
+                    res += obj.form;
+                }
+            } else {
+                if (obj.object) {
+                    res += generateObjectString(obj.object);
+                    res += " that is ";
+                    res += generateLocationString(obj.location);
+                }
+            }
+            return res;
+        }
+
+        function generateLocationString(location : Parser.Location) : string {
+            var res : string = "";
+            console.log("generateLocationString", location);
+
+            if (location.relation === "ontop") {
+                res += "on top";
+            } else {
+                res += location.relation;
+            }
+            res += " ";
+            res += generateEntityString(location.entity);
+
+            if (location.relation === "between") {
+                res += "and";
+                res += generateEntityString(location.entity2);
+            }
+            return res;
+        }
+
+        export function describeObject(id : string, world : World) : string {
+            var res : string = "the ";
+            if (id === "floor") {
+                res += "floor";
+            } else {
+                res += world.currentState.objects[id].size + " ";
+                res += world.currentState.objects[id].color + " ";
+                res += world.currentState.objects[id].form;
+            }
+            return res;
+        }
+
+        /** This is a convenience function that recognizes strings
+        * of the form "p r r d l p r d"
+        */
+        export function splitStringIntoPlan(planstring : string) : string[] {
+            var plan : string[] = planstring.trim().split(/\s+/);
+            var actions : {[act:string] : string}
+            = {p:"Picking", d:"Dropping", l:"Going left", r:"Going right"};
+            for (var i = plan.length-1; i >= 0; i--) {
+                if (!actions[plan[i]]) {
+                    return;
+                }
+                plan.splice(i, 0, actions[plan[i]]);
+            }
+            return plan;
+        }
+
+    }
