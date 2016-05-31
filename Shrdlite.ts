@@ -186,7 +186,11 @@ module Shrdlite {
                     res += " ";
                 }
                 if (obj.form) {
+                    if (obj.form === "anyform") {
+                        res += "object";
+                    } else {
                     res += obj.form;
+                }
                 }
             } else {
                 if (obj.object) {
