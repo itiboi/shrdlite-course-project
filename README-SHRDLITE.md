@@ -2,6 +2,14 @@
 
 ## Extensions
 
+### Describing planner actions
+
+We implemented output of what the planner does to achieve a goal. When doing so, it gives reasonably concise descriptions of the objects it is handling, that is instead of printing all properties of an object, it only prints the properties needed to distinguish it from other objects of the same form in the current world. Our implementation can be tested with any utterance that results in a valid plan, but one example is:
+
+    * (small world) move all balls inside a large box
+
+Notice how it prints "Picking up the black ball" and omits the fact that the ball is *small*, as there is no other black ball in this world.
+
 ### Disambiguation for "the" quantifier
 
 We implemented the abortion of plan execution in case there is ambiguity originating in the use of the "the" quantifier. The user is then presented with a question telling them how to specify their query. To implement it, we made changes in the following places:
