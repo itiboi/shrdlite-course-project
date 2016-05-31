@@ -71,7 +71,7 @@ module Shrdlite {
             interpretations.forEach((result, n) => {
                 world.printDebugInfo("  (" + n + ") " + Interpreter.stringify(result));
             });
-            //TODO FILTER OUT nulls;
+
             if (interpretations.length > 1) {
                 console.log("inside multiple interpretations",interpretations.length);
                 generateUserQuestion(interpretations,world);
