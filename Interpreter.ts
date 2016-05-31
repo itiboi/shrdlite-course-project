@@ -92,7 +92,6 @@ module Interpreter {
     export function stringifyInterpretation(interpretation : DNFFormula) : string {
         return interpretation.map((literals) => {
             return literals.map((lit) => stringifyLiteral(lit)).join(" & ");
-            // return literals.map(stringifyLiteral).join(" & ");
         }).join(" | ");
     }
 
@@ -124,15 +123,12 @@ module Interpreter {
         }
     }
 
-    //////////////////////////////////////////////////////////////////////
-    // private functions
+    ///////////////////////////////////////////////////////////////////////
+    ///////////////////      private functions          ///////////////////
+    ///////////////////////////////////////////////////////////////////////
+
     /**
-     * The core interpretation function. The code here is just a
-     * template; you should rewrite this function entirely. In this
-     * template, the code produces a dummy interpretation which is not
-     * connected to `cmd`, but your version of the function should
-     * analyse cmd in order to figure out what interpretation to
-     * return.
+     * The core interpretation function.
      * @param cmd The actual command. Note that it is *not* a string, but rather an object of type `Command` (as it has been parsed by the parser).
      * @param state The current state of the world. Useful to look up objects in the world.
      * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
@@ -191,33 +187,30 @@ module Interpreter {
             throw new Error("Sentence has no valid interpretation in world");
         }
 
-        /** Calling askForClarification() in cases where there might be ambiguity that originates in the use of the THE quantifier. Since we have the BETWEEN keyword, several cases have to be considered and the existence of objects has to be tested before accessing them.
+        /** Calling askForClarification()
+        * in cases where there might be ambiguity
+        * that originates in the use of the THE quantifier.
+        * Since we have the BETWEEN keyword, several cases have to be considered
+        * and the existence of objects has to be tested before accessing them.
         */
         if (cmd.entity !== undefined && cmd.entity.quantifier === "the") {
             if (cmd.location !== undefined && cmd.location.relation === "between" && interpretation.length > 2) {
-                console.log("way1");
                 throwBetweenClarificationError(interpretation, 0, existingObjects);
             } else if ((cmd.location === undefined || cmd.location.relation !== "between") && interpretation.length > 1) {
-                console.log("way2");
                 throwClarificationError(interpretation, 0, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.entity.quantifier === "the") {
             if (cmd.location.relation === "between" && interpretation.length > 2) {
-                console.log("way3");
-                // FIXME
                 throwBetweenClarificationError(interpretation, 1, existingObjects);
             } else if (cmd.location.relation !== "between" && interpretation.length > 1) {
-                console.log("way4");
                 throwClarificationError(interpretation, 1, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.relation === "between" && cmd.location.entity2.quantifier === "the") {
             if (interpretation.length > 2) {
-                console.log("way5");
-                // FIXME
                 throwBetweenClarificationError(interpretation, 1, existingObjects);
             }
         }
@@ -287,7 +280,6 @@ module Interpreter {
             var def = object.definition;
             if (Physics.hasSameAttributes(rootObject, def)) {
                 if(nestedCandidates == undefined) {
-                    console.log("object in hasSameAttributes",name);
                     objCandidates.push(name);
                 }
                 // Check whether one relation satisfying candidate exist
@@ -379,10 +371,6 @@ module Interpreter {
                 var hasGoalAll = (cmd.location.entity.quantifier == "all");
                 var hasBetweenGoalAll = (cmd.location.entity2 != undefined && cmd.location.entity2.quantifier == "all");
                 var relation = cmd.location.relation;
-
-                console.log("hasMainAll", hasMainAll);
-                console.log("hasGoalAll", hasGoalAll);
-                console.log("hasBetweenGoalAll", hasBetweenGoalAll);
 
                 switch (relation) {
                     case "leftof":
@@ -515,7 +503,6 @@ module Interpreter {
 
             // Only add possible assignments
             if(allConj.length != 0){
-                console.log("Conjunction",allConj);
                 interpretation.push(allConj);
             }
         });
@@ -542,8 +529,6 @@ module Interpreter {
             assignment.map((idx, pairIdx) => {
                 var allIdx1 = Math.floor(pairIdx / candidates[allCandidate2].length);
                 var allIdx2 = pairIdx % candidates[allCandidate1].length;
-                console.log("idx", idx, "pairIdx", pairIdx, "non1", allIdx1, "non2", allIdx2);
-
                 var getIdx  = (n: number) => ((notAllCandidate == n) ? idx : (notAllCandidate == (n+1)%3) ? allIdx1 : allIdx2);
                 var targetC = candidates[0][getIdx(0)];
                 var goal1   = candidates[1][getIdx(1)];
@@ -576,8 +561,6 @@ module Interpreter {
             assignment.map((pairIdx,idx) => {
                 var nonIdx1 = Math.floor(pairIdx / candidates[nonCandidate2].length);
                 var nonIdx2 = pairIdx % candidates[nonCandidate1].length;
-                console.log("idx", idx, "pairIdx", pairIdx, "non1", nonIdx1, "non2", nonIdx2);
-
                 var getIdx  = (n: number) => ((allCandidate == n) ? idx : (allCandidate == (n+1)%3) ? nonIdx1 : nonIdx2);
                 var targetC = candidates[0][getIdx(0)];
                 var goal1   = candidates[1][getIdx(1)];
