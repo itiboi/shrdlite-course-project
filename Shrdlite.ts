@@ -126,7 +126,7 @@ module Shrdlite {
             return finalPlan;
         }
 
-        export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
+        function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
             var userQuestion : string = "Did you mean to ";
 
             var firstRun : boolean = true;
