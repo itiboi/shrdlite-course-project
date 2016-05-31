@@ -93,8 +93,8 @@ module Shrdlite {
                         world.printError("- "+message+"?");
                     });
                 }
-                else{
-                    world.printError("Interpretation error", err);
+                else {
+                    world.printError("Interpretation error", err.message);
                 }
                 return;
             }
@@ -126,7 +126,7 @@ module Shrdlite {
             return finalPlan;
         }
 
-        function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
+        export function generateUserQuestion(interpretations:Interpreter.InterpretationResult[], world: World){
             var userQuestion : string = "Did you mean to ";
 
             var firstRun : boolean = true;
@@ -200,7 +200,11 @@ module Shrdlite {
             var res : string = "";
             console.log("generateLocationString", location);
 
-            res += location.relation;
+            if (location.relation === "ontop") {
+                res += "on top";
+            } else {
+                res += location.relation;
+            }
             res += " ";
             res += generateEntityString(location.entity);
 

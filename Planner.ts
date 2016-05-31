@@ -91,7 +91,7 @@ module Planner {
             startNode,
             (n) => isGoal(n, interpretation, state.objects),
             (n) => heuristic(n, interpretation, state.objects),
-            1 // TODO?
+            3 // TODO?
         )
 
         // Check for timeout
@@ -117,7 +117,7 @@ module Planner {
                 var h : number = 0;
 
                 // Check if relation already satisfied
-                if(Physics.hasValidLocation(objs[0], literal.relation, objs[1])) {
+                if(Physics.hasValidLocation(objs[0], literal.relation, objs[1], objs[2])) {
                     litHeuristic.push(0);
                     continue;
                 }
@@ -214,6 +214,41 @@ module Planner {
                         }
                         break;
 
+                    case "between":
+                        var order1 = 0;
+                        var order1 = 0;
+                        var order2 = 0;
+                        var stackDist = Math.abs(objs[1].stackId - objs[2].stackId);
+
+                        // Drop it in between
+                        if (objs[0].held) {
+                            if (stackDist > 1) {
+                                // Only drop it
+                                h = 1;
+                            }
+                            else {
+                                // Rearrange the easiest one before dropping
+                                var above1 = state.stacks[objs[1].stackId].length - objs[1].stackLocation - 1;
+                                var above2 = state.stacks[objs[2].stackId].length - objs[2].stackLocation - 1;
+                                h = 1 + 2 * Math.min(above1, above2);
+                            }
+                        }
+                        else {
+                            if (objs[1].held || objs[2].held) {
+                                // Just drop it straight on the right spot
+                                h = 1;
+                            }
+                            else {
+                                var above0 = state.stacks[objs[0].stackId].length - objs[0].stackLocation - 1;
+                                var above1 = state.stacks[objs[1].stackId].length - objs[1].stackLocation - 1;
+                                var above2 = state.stacks[objs[2].stackId].length - objs[2].stackLocation - 1;
+
+                                // Just move the easiest to move object
+                                h = 2 + 2 * Math.min(above0, above1, above2);
+                            }
+                        }
+                        break;
+
                     default:
                         console.warn("Unknown relation received:", literal.relation);
                         break;
@@ -239,10 +274,11 @@ module Planner {
                 // Check if the literal is valid given the polarity and the location of object
                 var object1 = getObjectFromWorldState(node, literal.args[0], objects);
                 var object2 = getObjectFromWorldState(node, literal.args[1], objects);
+                var object3 = getObjectFromWorldState(node, literal.args[2], objects);
                 //console.log("literals:", literal.args.join(", "), " rel:", literal.relation);
                 //console.log("ob1:", object1);
                 //console.log("ob2:", object2);
-                if (!Physics.hasValidLocation(object1, literal.relation, object2)){
+                if (!Physics.hasValidLocation(object1, literal.relation, object2, object3)){
                   //console.log("false")
                   feasible = false;
                   break;
@@ -421,11 +457,11 @@ module Planner {
             // Perform actual action
             if (nextState.holding == null) {
                 // Drop object
-                instructions.push("Dropping the " + fullObj.definition.form, "d");
+                instructions.push("Dropping the " + Physics.getMinimalDescription(fullObj.definition, objects), "d");
             }
             else {
                 // Take object
-                instructions.push("Picking up the " + fullObj.definition.form, "p");
+                instructions.push("Picking up the " + Physics.getMinimalDescription(fullObj.definition, objects), "p");
             }
 
             lastState = nextState;
@@ -436,6 +472,4 @@ module Planner {
         console.log("Length of instructions is:", instructions.filter((c) => (c.length == 1)).length);
         return instructions;
     }
-
-
 }
