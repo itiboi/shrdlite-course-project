@@ -139,11 +139,6 @@ module Interpreter {
      * @throws An error when no valid interpretations can be found
      */
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
-        // TODO: Handle ambiguity depending on quantifier for target and goal (ask user for clarification)
-        // TODO: Extension for 'all' quantifier (small)
-        // check inside the nested for loop if the quantifier is all
-        // if so, we will have to return a conjunction of goals instead of a disjunction
-
         var interpretation: DNFFormula = [];
         console.log("Command is", cmd);
 
@@ -154,6 +149,12 @@ module Interpreter {
         var mainCandidates: Candidates = undefined;
         if (cmd.command != "put") {
             mainCandidates = filterCandidate(cmd.entity, existingObjects);
+        }
+        else {
+            // Create "candidate" from held object
+            // Sanity check whether we are actually holding something
+            var candidateList = (state.holding == null) ? [] : [state.holding];
+            mainCandidates = new Candidates(candidateList, undefined, undefined, undefined);
         }
 
         console.log("Main objects", mainCandidates);
@@ -170,64 +171,20 @@ module Interpreter {
         console.log("Goal objects", goalLocationCandidates);
         console.log("Second goal objects", betweenSecondLocationCandidates);
 
-        switch (cmd.command) {
-            case "move":
-                // Add every feasible combination of target and goal as interpretation
-                for (var target of mainCandidates.main) {
-                    for (var goal of goalLocationCandidates.main) {
-                        if(cmd.location.relation === "between"){
-                            for(var otherGoal of betweenSecondLocationCandidates.main){
-                                interpretation = buildBetweenConj(goal,target,otherGoal,existingObjects,interpretation);
-                            }
-                        }
-                        else {
-                            if (Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal])){
-                                interpretation.push([{polarity: true, relation: cmd.location.relation, args: [target,goal]}]);
-                            }
-                        }
-                    }
-                }
-
-                break;
-            case "take":
-                for (var target of mainCandidates.main) {
-                    if (target != "floor") {
-                        interpretation.push([{polarity: true, relation: "holding", args: [target]}]);
-                    }
-                }
-                break;
-            case "put":
-                // Sanity check whether we are actually holding something
-                if(state.holding == null) {
-                    break;
-                }
-                // Add all feasible goals as interpretation
-                var target = state.holding;
-                for (var goal of goalLocationCandidates.main) {
-                    if(cmd.location.relation === "between"){
-                        for(var othergoal of betweenSecondLocationCandidates.main){
-                            console.log("goal",existingObjects[goal]);
-                            console.log("othergoal",existingObjects[othergoal]);
-                            if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
-                                console.log("passed the physics");
-                                interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
-                                                     {polarity: true, relation: "rightof", args: [target, othergoal]}]);
-                            }
-                            if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
-                                console.log("passed the physics");
-                                interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
-                                                     {polarity: true, relation: "rightof", args: [target, goal]}]);
-                            }
-                        }
-                    }
-                    else{(Physics.isValidGoalLocation(existingObjects[target], cmd.location.relation, existingObjects[goal]))
-                        interpretation.push([{ polarity: true, relation: cmd.location.relation, args: [target, goal] }]);
-                    }
-                }
-
-                break;
+        // Generate interpretation depending on all quantifier occurres.
+        var generateAll = false;
+        if((cmd.entity == undefined || cmd.entity.quantifier != "all") &&
+           (cmd.location == undefined || cmd.location.entity.quantifier != "all") &&
+           (cmd.location == undefined || cmd.location.entity2 == undefined || cmd.location.entity2.quantifier != "all")) {
+            console.log("No all quantifier found");
+            interpretation = generateAnyDNF(
+                cmd, mainCandidates, goalLocationCandidates, betweenSecondLocationCandidates, existingObjects, state);
         }
-
+        else {
+            console.log("Taking care of the all quantifier");
+            interpretation = generateAllDNF(
+                cmd, mainCandidates, goalLocationCandidates, betweenSecondLocationCandidates, existingObjects, state);
+        }
 
         if (interpretation.length == 0) {
             console.log("Could not find valid interpretation in world");
@@ -239,130 +196,38 @@ module Interpreter {
         if (cmd.entity !== undefined && cmd.entity.quantifier === "the") {
             if (cmd.location !== undefined && cmd.location.relation === "between" && interpretation.length > 2) {
                 console.log("way1");
-                askForBetweenClarification(interpretation, 0, existingObjects);
+                throwBetweenClarificationError(interpretation, 0, existingObjects);
             } else if ((cmd.location === undefined || cmd.location.relation !== "between") && interpretation.length > 1) {
                 console.log("way2");
-                askForClarification(interpretation, 0, existingObjects);
+                throwClarificationError(interpretation, 0, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.entity.quantifier === "the") {
             if (cmd.location.relation === "between" && interpretation.length > 2) {
                 console.log("way3");
-                askForBetweenClarification(interpretation, 1, existingObjects);
+                // FIXME
+                throwBetweenClarificationError(interpretation, 1, existingObjects);
             } else if (cmd.location.relation !== "between" && interpretation.length > 1) {
                 console.log("way4");
-                askForClarification(interpretation, 1, existingObjects);
+                throwClarificationError(interpretation, 1, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.relation === "between" && cmd.location.entity2.quantifier === "the") {
             if (interpretation.length > 2) {
                 console.log("way5");
-                askForBetweenClarification(interpretation, 1, existingObjects);
+                // FIXME
+                throwBetweenClarificationError(interpretation, 1, existingObjects);
             }
         }
 
         return interpretation;
     }
 
-    /**
-    Builds the conjuctions specificly for the BETWEEN keyword - it uses the existing LEFTOF and RIGHTOF keywords in both possible combinations.
-    * @param goal One argument of the BETWEEN predicate.
-    * @param othergoal The other argument of the BETWEEN predicate.
-    * @param target The object to be handled.
-    * @param existingObjects A dict of objects that exist in the world.
-    * @param interpretation The DNF formula to append to.
-    * @returns The DNF formula with additional literals appended.
-    */
-    function buildBetweenConj (goal : string, target : string, othergoal : string, existingObjects : ObjectDict, interpretation : DNFFormula) : DNFFormula {
-
-        if(Physics.isValidBetweenLocation(existingObjects[goal],existingObjects[target],existingObjects[othergoal])){
-            console.log("passed the physics");
-            interpretation.push([{polarity: true, relation: "leftof", args: [target, goal] },
-                                {polarity: true, relation: "rightof", args: [target, othergoal]}]);
-        }
-        if(Physics.isValidBetweenLocation(existingObjects[othergoal],existingObjects[target],existingObjects[goal])){
-            console.log("passed the physics");
-            interpretation.push([{polarity: true, relation: "leftof", args: [target, othergoal] },
-                                {polarity: true, relation: "rightof", args: [target, goal]}]);
-        }
-        console.log("conj",interpretation);
-        return interpretation;
-    }
-
-    /**
-    Wrapper function to generate user questions for the THE quantifier when not using the BETWEEN keyword.
-    * @param interpretation DNF formula representing the interpretation.
-    * @param column (0 or 1) where in the utterance THE occured.
-    * @param existingObjects A dict of objects that exist in the world.
-    */
-    function askForClarification(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
-        askForGeneralClarification(interpretation, column, existingObjects, 0, 1);
-    }
-
-    /**
-    Wrapper function to generate user questions for the THE quantifier when using the BETWEEN keyword.
-    * @param interpretation DNF formula representing the interpretation.
-    * @param column (0 or 1) where in the utterance THE occured.
-    * @param existingObjects A dict of objects that exist in the world.
-    */
-    function askForBetweenClarification(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
-        askForGeneralClarification(interpretation, column, existingObjects, 0, 2);
-        askForGeneralClarification(interpretation, column, existingObjects, 1, 2);
-    }
-
-    /**
-    Generates a user question in case there is ambiguity originating in the usage of the THE quantifier. Whether that is actually the case is checked.
-    * @param interpretation DNF formula representing the interpretation.
-    * @param column (0 or 1) where in the utterance THE occured.
-    * @param existingObjects A dict of objects that exist in the world.
-    * @param startingPosition The conjunction to start the check with.
-    * @param stepSize How many conjunctions to step ahead in each step check.
-    */
-    function askForGeneralClarification(interpretation : DNFFormula, column : number, existingObjects : ObjectDict, startingPosition : number, stepSize : number){
-        var candidateSet = new collections.Set<string>();
-        var descriptionLookUp = new collections.Dictionary<string, string>();
-
-        console.log("started disambiguation.");
-        console.log(interpretation);
-
-        for (var i = startingPosition; i < interpretation.length; i+=stepSize) {
-            var firstLiteral : Literal;
-            var candidateID : string;
-            firstLiteral = interpretation[i][0];
-            candidateID = firstLiteral.args[column];
-            if (!candidateSet.contains(candidateID)) {
-                var descrString : string = "the ";
-                descrString += existingObjects[candidateID].definition.size + " ";
-                descrString += existingObjects[candidateID].definition.color + " ";
-                descrString += existingObjects[candidateID].definition.form;
-                if (descriptionLookUp.containsKey(descrString)) {
-                    throw new Error("The description " + descrString + " is ambiguous. Please specify.");
-                }
-                descriptionLookUp.setValue(descrString, candidateID);
-                candidateSet.add(candidateID);
-            }
-        }
-
-        console.log(candidateSet);
-
-        if (candidateSet.size() < 2) {
-            return;
-        }
-
-        var userQuestion: string = "[ambiguity]";
-        var firstTime : boolean = true;
-        for (var desc of descriptionLookUp.keys()){
-            if (!firstTime) {
-                userQuestion += "|"
-            }
-            userQuestion += desc;
-            firstTime = false;
-        }
-        throw new Error(userQuestion);
-    }
-
+    //---------------------------------------------------------------------//
+    // Functions for matching objects of parsing to objects of world state //
+    //---------------------------------------------------------------------//
 
     /**
     * Filters out all objects which don't exist in world state.
@@ -420,9 +285,9 @@ module Interpreter {
         for (var name of Object.keys(objects)) {
             var object = objects[name];
             var def = object.definition;
-            if (hasSameAttributes(rootObject, def)) {
+            if (Physics.hasSameAttributes(rootObject, def)) {
                 if(nestedCandidates == undefined) {
-                  console.log("object in hasSameAttributes",name);
+                    console.log("object in hasSameAttributes",name);
                     objCandidates.push(name);
                 }
                 // Check whether one relation satisfying candidate exist
@@ -430,10 +295,7 @@ module Interpreter {
                     if (relation === "between"){
                         for (var nested of nestedCandidates.main) {
                             for (var nested2 of nestedCandidates2.main){
-                                if ((Physics.hasValidLocation(objects[name],"leftof",objects[nested])
-                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested2])) ||
-                                (Physics.hasValidLocation(objects[name],"leftof",objects[nested2])
-                                && Physics.hasValidLocation(objects[name],"rightof",objects[nested]))) {
+                                if (Physics.hasValidLocation(objects[name], "between", objects[nested], objects[nested2])) {
                                     objCandidates.push(name);
                                     break;
                                 }
@@ -441,8 +303,7 @@ module Interpreter {
                         }
                     } else {
                         for (var nested of nestedCandidates.main) {
-                            if (Physics.hasValidLocation(objects[name],relation,objects[nested])) {
-                              console.log("object in hasValidLocation",name);
+                            if (Physics.hasValidLocation(objects[name], relation, objects[nested], undefined)) {
                                 objCandidates.push(name);
                                 break;
                             }
@@ -455,12 +316,387 @@ module Interpreter {
         return new Candidates(objCandidates, relation, nestedCandidates, nestedCandidates2);
     }
 
+
+    //-------------------------------------------------------//
+    //  Functions for generating the DNF interpretations     //
+    //-------------------------------------------------------//
+
     /**
-    * Check if two objects have the same attributes.
+    * Generate DNF in the general case
     */
-    function hasSameAttributes (currObject: Parser.Object, other: ObjectDefinition): boolean {
-        return (currObject.form == "anyform" || currObject.form == other.form) &&
-        (currObject.size == null || currObject.size == other.size) &&
-        (currObject.color == null || currObject.color == other.color);
+    function generateAnyDNF (
+        cmd : Parser.Command, mainCandidates:Candidates, goalLocationCandidates:Candidates,
+        betweenSecondLocationCandidates:Candidates, existingObjects:ObjectDict, state:WorldState): DNFFormula {
+
+        var interpretation:DNFFormula = [];
+        switch (cmd.command) {
+            case "put":
+            case "move":
+                // Add every feasible combination of target and goal as interpretation
+                for (var target of mainCandidates.main) {
+                    for (var goal of goalLocationCandidates.main) {
+                        if(cmd.location.relation === "between"){
+                            for(var otherGoal of betweenSecondLocationCandidates.main){
+                                interpretation.push([createLiteral("between", [target, goal, otherGoal])]);
+                            }
+                        }
+                        else {
+                            var targetObj = existingObjects[target];
+                            var goalObj = existingObjects[goal];
+                            if (Physics.isValidGoalLocation(targetObj, cmd.location.relation, goalObj, undefined)){
+                                interpretation.push([createLiteral(cmd.location.relation, [target,goal])]);
+                            }
+                        }
+                    }
+                }
+
+                break;
+            case "take":
+                for (var target of mainCandidates.main) {
+                    if (target != "floor") {
+                        interpretation.push([createLiteral("holding", [target])]);
+                    }
+                }
+                break;
+        }
+
+        return interpretation;
+    }
+
+    /**
+    * Generate DNF for the all quantifier
+    */
+    function generateAllDNF(
+        cmd : Parser.Command, mainCandidates:Candidates, goalLocationCandidates:Candidates,
+        betweenSecondLocationCandidates:Candidates, existingObjects:ObjectDict, state:WorldState) : DNFFormula {
+
+        var interpretation: DNFFormula = [];
+        switch (cmd.command) {
+            case "move":
+            case "put":
+                // Determine where all occurs everywhere
+                var hasMainAll = (cmd.entity != undefined && cmd.entity.quantifier == "all");
+                var hasGoalAll = (cmd.location.entity.quantifier == "all");
+                var hasBetweenGoalAll = (cmd.location.entity2 != undefined && cmd.location.entity2.quantifier == "all");
+                var relation = cmd.location.relation;
+
+                console.log("hasMainAll", hasMainAll);
+                console.log("hasGoalAll", hasGoalAll);
+                console.log("hasBetweenGoalAll", hasBetweenGoalAll);
+
+                switch (relation) {
+                    case "leftof":
+                    case "rightof":
+                    case "beside":
+                    case "above":
+                    case "under":
+                    case "inside":
+                    case "ontop":
+                        if(hasMainAll && hasGoalAll) {
+                            // All combinations have to the satisfied
+                            var allConj: Conjunction = [];
+                            for(var target of mainCandidates.main) {
+                                for(var goal of goalLocationCandidates.main) {
+                                    var targetObj = existingObjects[target];
+                                    var goalObj = existingObjects[goal];
+                                    // Since we are creating on large conjunction one infeasible destroys everything
+                                    if (!Physics.isValidGoalLocation(targetObj, relation, goalObj, undefined)) {
+                                        return [];
+                                    }
+                                    allConj.push(createLiteral(relation, [target, goal]));
+                                }
+                            }
+
+                            interpretation.push(allConj);
+                        }
+                        else if(hasMainAll) {
+                            // All assignments of main objects to one goal
+                            interpretation = createOneSidedAllDNF(
+                                mainCandidates.main, goalLocationCandidates.main, existingObjects, relation, false);
+                        }
+                        else {
+                            // All assignments of goals objects to one main
+                            interpretation = createOneSidedAllDNF(
+                                goalLocationCandidates.main, mainCandidates.main, existingObjects, relation, true);
+                        }
+
+                        break;
+                    case "between":
+                        // Ugly checking for each combination but is the easiest way
+                        if(hasMainAll && hasGoalAll && hasBetweenGoalAll) {
+                            // All combinations at a time have to the satisfied
+                            var allConj: Conjunction = [];
+                            mainCandidates.main.map((target) => {
+                                goalLocationCandidates.main.map((goal1) => {
+                                    betweenSecondLocationCandidates.main.map((goal2) => {
+                                        allConj.push(createLiteral("between", [target, goal1, goal2]));
+                                    });
+                                });
+                            });
+                            interpretation.push(allConj);
+                        }
+                        // Two have the all quantifier
+                        else if (!hasMainAll && hasGoalAll && hasBetweenGoalAll) {
+                            interpretation = createTwoSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 0);
+                        }
+                        else if (hasMainAll && !hasGoalAll && hasBetweenGoalAll) {
+                            interpretation = createTwoSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 1);
+                        }
+                        else if (hasMainAll && hasGoalAll && !hasBetweenGoalAll) {
+                            interpretation = createTwoSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 2);
+                        }
+                        // Only one is missing the all quantifier
+                        else if (hasMainAll && !hasGoalAll && !hasBetweenGoalAll) {
+                            interpretation = createOneSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 0);
+                        }
+                        else if (!hasMainAll && hasGoalAll && !hasBetweenGoalAll) {
+                            interpretation = createOneSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 1);
+                        }
+                        else if (!hasMainAll && !hasGoalAll && hasBetweenGoalAll) {
+                            interpretation = createOneSidedBetweenAllDNF(
+                                [mainCandidates.main, goalLocationCandidates.main, betweenSecondLocationCandidates.main], 2);
+                        }
+
+                        break;
+                }
+
+                break;
+            case "take":
+                // Simple: we can only take one object
+                if(mainCandidates.main.length > 1) {
+                    throw new Error("Only one object can be held at a time!");
+                }
+
+                // Prevent floor from being picked
+                if(mainCandidates.main[0] != "floor") {
+                    interpretation.push([createLiteral("holding", mainCandidates.main)]);
+                }
+
+                break;
+        }
+
+        return interpretation;
+    }
+
+    /**
+    * Generate DNF for the occurrence of the all quantifier on one side of the relation.
+    */
+    function createOneSidedAllDNF(
+        candidates_1 : string[],
+        candidates_2 : string[],
+        existingObjects : ObjectDict,
+        relation : string,
+        invertedRelation : boolean) : DNFFormula {
+
+        var interpretation: DNFFormula = [];
+        var assignments = getCombinations(candidates_1.length, candidates_2.length-1);
+        assignments.forEach((assignment) => {
+            console.log(assignment);
+            var allConj: Conjunction =[];
+            for(var idx = 0; idx < assignment.length ; idx++){
+                var targetC = !invertedRelation ? candidates_1[idx] : candidates_2[assignment[idx]];
+                var goalC =   !invertedRelation ? candidates_2[assignment[idx]] : candidates_1[idx];
+                var targetCObj = existingObjects[targetC];
+                var goalCObj = existingObjects[goalC];
+                if (Physics.isValidGoalLocation(targetCObj, relation, goalCObj, undefined)) {
+                    allConj.push(createLiteral(relation, [targetC, goalC]));
+                }
+                else {
+                    // Abort if one literal is invalid
+                    allConj = [];
+                    break;
+                }
+            }
+
+            // Only add possible assignments
+            if(allConj.length != 0){
+                console.log("Conjunction",allConj);
+                interpretation.push(allConj);
+            }
+        });
+
+        return interpretation;
+    }
+
+    /**
+    * Generate DNF for the occurrence of two all quantifier in a between relation.
+    */
+    function createTwoSidedBetweenAllDNF(
+        candidates :string[][],
+        notAllCandidate : number) : DNFFormula {
+
+        var allCandidate1 = (notAllCandidate + 1) % 3;
+        var allCandidate2 = (notAllCandidate + 2) % 3;
+        var interpretation: DNFFormula = [];
+        getCombinations(
+            candidates[allCandidate1].length * candidates[allCandidate2].length,
+            candidates[notAllCandidate].length - 1)
+        .forEach((assignment) => {
+            // Create conjunction for each possible satisfaction assignment
+            var allConj: Conjunction =[];
+            assignment.map((idx, pairIdx) => {
+                var allIdx1 = Math.floor(pairIdx / candidates[allCandidate2].length);
+                var allIdx2 = pairIdx % candidates[allCandidate1].length;
+                console.log("idx", idx, "pairIdx", pairIdx, "non1", allIdx1, "non2", allIdx2);
+
+                var getIdx  = (n: number) => ((notAllCandidate == n) ? idx : (notAllCandidate == (n+1)%3) ? allIdx1 : allIdx2);
+                var targetC = candidates[0][getIdx(0)];
+                var goal1   = candidates[1][getIdx(1)];
+                var goal2   = candidates[2][getIdx(2)];
+                allConj.push(createLiteral("between", [targetC, goal1, goal2]));
+            });
+
+            interpretation.push(allConj);
+        });
+
+        return interpretation;
+    }
+
+    /**
+    * Generate DNF for the occurrence of one all quantifier in a between relation.
+    */
+    function createOneSidedBetweenAllDNF(
+        candidates : string[][],
+        allCandidate : number) : DNFFormula {
+
+        var nonCandidate1 = (allCandidate + 1) % 3;
+        var nonCandidate2 = (allCandidate + 2) % 3;
+        var interpretation: DNFFormula = [];
+        getCombinations(
+            candidates[allCandidate].length,
+            candidates[nonCandidate1].length * candidates[nonCandidate2].length-1)
+        .forEach((assignment) => {
+            // Create conjunction for each possible satisfaction assignment
+            var allConj: Conjunction =[];
+            assignment.map((pairIdx,idx) => {
+                var nonIdx1 = Math.floor(pairIdx / candidates[nonCandidate2].length);
+                var nonIdx2 = pairIdx % candidates[nonCandidate1].length;
+                console.log("idx", idx, "pairIdx", pairIdx, "non1", nonIdx1, "non2", nonIdx2);
+
+                var getIdx  = (n: number) => ((allCandidate == n) ? idx : (allCandidate == (n+1)%3) ? nonIdx1 : nonIdx2);
+                var targetC = candidates[0][getIdx(0)];
+                var goal1   = candidates[1][getIdx(1)];
+                var goal2   = candidates[2][getIdx(2)];
+                allConj.push(createLiteral("between", [targetC, goal1, goal2]));
+            });
+
+            interpretation.push(allConj);
+        });
+
+        return interpretation;
+    }
+
+    /**
+     * Shortcut method for creating a literal.
+     */
+    function createLiteral(relation: string, args: string[]): Literal {
+        return { polarity: true, relation: relation, args: args };
+    }
+
+    /**
+     * Retrieve all possible arrays with given length containing only numbers from 0 to highest.
+     */
+    function getCombinations(length : number, highest : number) : collections.Set<number[]> {
+        var res = new collections.Set<number[]>();
+        addCombinations([], length, highest, res);
+        return res;
+    }
+
+    /**
+     * Internal recursive helper method for retrieving all possible combinations.
+     */
+    function addCombinations(a : number[], length : number, highest : number, set : collections.Set<number[]>) : void {
+        if (a.length == length){
+            set.add(a);
+        }
+        else {
+            for (var i = 0; i <= highest; i++) {
+                var b : number[] = a.slice();
+                b.push(i);
+                addCombinations(b, length, highest, set);
+            }
+        }
+    }
+
+    //-------------------------------------------------------//
+    // Functions for ambiguity                               //
+    //-------------------------------------------------------//
+
+    /**
+    Wrapper function to generate user questions for the THE quantifier when not using the BETWEEN keyword.
+    * @param interpretation DNF formula representing the interpretation.
+    * @param column (0 or 1) where in the utterance THE occured.
+    * @param existingObjects A dict of objects that exist in the world.
+    */
+    function throwClarificationError(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
+        throwGeneralClarificationError(interpretation, column, existingObjects, 0, 1);
+    }
+
+    /**
+     *Wrapper function to generate user questions for the THE quantifier when using the BETWEEN keyword.
+     * @param interpretation DNF formula representing the interpretation.
+     * @param column (0 or 1) where in the utterance THE occured.
+     * @param existingObjects A dict of objects that exist in the world.
+     */
+    function throwBetweenClarificationError(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
+        throwGeneralClarificationError(interpretation, column, existingObjects, 0, 2);
+        throwGeneralClarificationError(interpretation, column, existingObjects, 1, 2);
+    }
+
+    /**
+    Generates a user question in case there is ambiguity originating in the usage of the THE quantifier. Whether that is actually the case is checked.
+    * @param interpretation DNF formula representing the interpretation.
+    * @param column (0 or 1) where in the utterance THE occured.
+    * @param existingObjects A dict of objects that exist in the world.
+    * @param startingPosition The conjunction to start the check with.
+    * @param stepSize How many conjunctions to step ahead in each step check.
+    */
+    function throwGeneralClarificationError(
+        interpretation : DNFFormula, column : number, existingObjects : ObjectDict, startingPosition : number, stepSize : number) {
+        var candidateSet = new collections.Set<string>();
+        var descriptionLookUp = new collections.Dictionary<string, string>();
+
+        console.log("started disambiguation.");
+        console.log(interpretation);
+
+        for (var i = startingPosition; i < interpretation.length; i+=stepSize) {
+            var firstLiteral : Literal;
+            var candidateID : string;
+            firstLiteral = interpretation[i][0];
+            candidateID = firstLiteral.args[column];
+            if (!candidateSet.contains(candidateID)) {
+                var descrString : string = "the ";
+                descrString += existingObjects[candidateID].definition.size + " ";
+                descrString += existingObjects[candidateID].definition.color + " ";
+                descrString += existingObjects[candidateID].definition.form;
+                if (descriptionLookUp.containsKey(descrString)) {
+                    throw new Error("The description " + descrString + " is ambiguous. Please specify.");
+                }
+                descriptionLookUp.setValue(descrString, candidateID);
+                candidateSet.add(candidateID);
+            }
+        }
+
+        console.log(candidateSet);
+
+        if (candidateSet.size() < 2) {
+            return;
+        }
+
+        var userQuestion: string = "[ambiguity]";
+        var firstTime : boolean = true;
+        for (var desc of descriptionLookUp.keys()){
+            if (!firstTime) {
+                userQuestion += "|"
+            }
+            userQuestion += desc;
+            firstTime = false;
+        }
+        throw new Error(userQuestion);
     }
 }

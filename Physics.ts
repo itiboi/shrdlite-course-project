@@ -39,9 +39,9 @@ module Physics {
     /**
     * Check if two objects are correctly related and satisfy physical laws
     */
-    export function hasValidLocation(c1: FoundObject, relation: string, c2: FoundObject): boolean {
+    export function hasValidLocation(c1: FoundObject, relation: string, c2: FoundObject, c3: FoundObject): boolean {
         // Held object can only satisfy holding relation
-        if (relation != "holding" && (c1.held || c2.held)) {
+        if (relation != "holding" && (c1.held || c2.held || (c3 != undefined && c3.held))) {
             return false;
         }
 
@@ -50,6 +50,8 @@ module Physics {
                 return c1.stackId < c2.stackId;
             case "rightof":
                 return c1.stackId > c2.stackId;
+            case "between":
+                return (c2.stackId < c1.stackId && c1.stackId < c3.stackId) || (c3.stackId < c1.stackId && c1.stackId < c2.stackId);
             case "inside":
                 // Objects are “inside” boxes, but “ontop” of other objects
                 // AND Small objects cannot support large objects.
@@ -63,7 +65,7 @@ module Physics {
                 // Every object can be stacked on the floor.
                 // The floor is present at every stackId but the stackLocation has to be valid
                 if(c2.floor){
-                    return c1.stackLocation-1 == c2.stackLocation
+                    return c1.stackLocation == 0;
                 }
                 return c1.stackId == c2.stackId && c1.stackLocation-1 == c2.stackLocation && isStackingAllowedByPhysics(c1.definition, c2.definition);
             case "under":
@@ -122,25 +124,32 @@ module Physics {
         }
 
         // Rest is allowed
-        return true;
+        return topC.form != "floor";
     }
 
     /**
     * Check whether given relation is in general feasible considering physical laws.
     */
-    export function isValidBetweenLocation (goal1: Physics.FoundObject, target:Physics.FoundObject,goal2:Physics.FoundObject) : boolean{
-        return isValidGoalLocation(goal1, "leftof",target) && isValidGoalLocation (goal2,"rightof",target);
-    }
-
-    export function isValidGoalLocation(c1: Physics.FoundObject, relation: string, c2: Physics.FoundObject): boolean{
-        if(c1==c2) {
+    export function isValidGoalLocation(c1: FoundObject, relation: string, c2: FoundObject, c3: FoundObject): boolean {
+        // Prevent usage of same object twice
+        if(c1==c2 || (c2 != undefined && c2 == c3)) {
+            return false;
+        }
+        // Prevent floor from being put on top of something
+        if (c1.floor && relation != "under") {
+            return false;
+        }
+        if (c2.floor && relation != "above" && relation != "ontop") {
             return false;
         }
 
         switch(relation) {
-            case "leftof":
-                return true;
             case "rightof":
+            case "leftof":
+            case "beside":
+            case "between":
+            case "above":
+            case "under":
                 return true;
             case "inside":
                 if(c2.definition.size == "small" && c1.definition.size == "large") {
@@ -148,16 +157,47 @@ module Physics {
                 }
                 return c2.definition.form == "box";
             case "ontop":
-                return Physics.isStackingAllowedByPhysics(c1.definition, c2.definition);
-            case "under":
-                return true;
-            case "beside":
-                return true;
-            case "above":
-                return true;
+                return isStackingAllowedByPhysics(c1.definition, c2.definition);
             default:
                 console.warn("Unknown relation received:", relation);
                 return false;
         }
+    }
+
+    /**
+    * Check if two objects have the same attributes.
+    */
+    export function hasSameAttributes (currObject: Parser.Object, other: ObjectDefinition): boolean {
+        return (currObject.form == "anyform" || currObject.form == other.form) &&
+        (currObject.size == null || currObject.size == other.size) &&
+        (currObject.color == null || currObject.color == other.color);
+    }
+
+    /**
+     * Retrieve the minimal needed description to describe the object unique in the world
+     */
+    export function getMinimalDescription(obj: ObjectDefinition, objects: { [s: string]: ObjectDefinition }): string {
+        var allObjects: ObjectDefinition[] = Object.keys(objects).map((k) => objects[k]);
+
+        // Try only form first
+        var count: number = 0;
+        allObjects.map((o) => {
+            count += (obj.form == o.form) ? 1 : 0;
+        });
+        if (count == 1) {
+            return obj.form;
+        }
+
+        // Then color
+        count = 0;
+        allObjects.map((o) => {
+            count += (obj.form == o.form && obj.color == o.color) ? 1 : 0;
+        });
+        if(count == 1) {
+            return obj.color + " " + obj.form;
+        }
+
+        // Ok have to take full description
+        return obj.size + " " + obj.color + " " + obj.form;
     }
 }
