@@ -1,5 +1,14 @@
 # README-SHRDLITE for _BetaGo_
 
+## Basic implementation
+
+### Semantics of the keywords
+
+What follows is a description of how we understood some of the keywords to be implemented. These are the keywords that we thought of as slightly ambiguous:
+
+    * To us, "leftof" and "rightof" do not imply that two objects are right beside each other, but only a is left of b if and only if a's stackId is smaller that b's.
+    * To us, "beside" means that the difference of the respective stackIDs is exactly 1. The vertical position of the objects does not matter however.
+
 ## Extensions
 
 ### Describing planner actions
