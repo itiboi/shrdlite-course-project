@@ -91,7 +91,7 @@ module Planner {
             startNode,
             (n) => isGoal(n, interpretation, state.objects),
             (n) => heuristic(n, interpretation, state.objects),
-            3 // TODO?
+            3
         )
 
         // Check for timeout
@@ -352,7 +352,6 @@ module Planner {
         /** Computes the edges that leave from a node. */
         outgoingEdges(node: WorldStateNode): Edge<WorldStateNode>[] {
             console.log("Finding following states of", node.toString());
-            // TODO: Maybe consider arm position? (Adds unnecessary complexity)
             var edges: Edge<WorldStateNode>[] = [];
 
             if(node.holding == null) {
@@ -407,7 +406,6 @@ module Planner {
             if(a.toString() == b.toString()) {
                 return 0;
             }
-            // TODO: Not needed, but maybe nicer?
             return -1;
         }
     }
