@@ -1,6 +1,7 @@
 ///<reference path="World.ts"/>
 ///<reference path="Parser.ts"/>
 ///<reference path="Physics.ts"/>
+/// <reference path="GenerateQuestions.ts"/>
 ///<reference path="lib/collections.ts"/>
 
 /**
@@ -102,7 +103,7 @@ module Interpreter {
     /**
     * Helper to make life easier with type checker.
     */
-    interface ObjectDict {
+    export interface ObjectDict {
         [s: string]: Physics.FoundObject;
     }
 
@@ -193,26 +194,27 @@ module Interpreter {
         * Since we have the BETWEEN keyword, several cases have to be considered
         * and the existence of objects has to be tested before accessing them.
         */
+        console.log("interpretation",interpretation);
         if (cmd.entity !== undefined && cmd.entity.quantifier === "the") {
             if (cmd.location !== undefined && cmd.location.relation === "between" && interpretation.length > 2) {
-                throwBetweenClarificationError(interpretation, 0, existingObjects);
+                GenerateQuestions.throwBetweenClarificationError(interpretation, 0, existingObjects);
             } else if ((cmd.location === undefined || cmd.location.relation !== "between") && interpretation.length > 1) {
-                throwClarificationError(interpretation, 0, existingObjects);
+                GenerateQuestions.throwClarificationError(interpretation, 0, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.entity.quantifier === "the") {
-            if (cmd.location.relation === "between" && interpretation.length > 2) {
-                throwBetweenClarificationError(interpretation, 1, existingObjects);
+            if (cmd.location.relation === "between") {
+                //throwGeneralClarificationError(interpretation, column, existingObjects, 1, 1);
+                //throwBetweenClarificationError(interpretation, 1, existingObjects);
+                GenerateQuestions.throwGeneralClarificationError(interpretation,1,existingObjects,0,1);
             } else if (cmd.location.relation !== "between" && interpretation.length > 1) {
-                throwClarificationError(interpretation, 1, existingObjects);
+                GenerateQuestions.throwClarificationError(interpretation, 1, existingObjects);
             }
         }
 
         if (cmd.location !== undefined && cmd.location.relation === "between" && cmd.location.entity2.quantifier === "the") {
-            if (interpretation.length > 2) {
-                throwBetweenClarificationError(interpretation, 1, existingObjects);
-            }
+              GenerateQuestions.throwGeneralClarificationError(interpretation,2,existingObjects,0,1);
         }
 
         return interpretation;
@@ -647,80 +649,4 @@ module Interpreter {
         }
     }
 
-    //-------------------------------------------------------//
-    // Functions for ambiguity                               //
-    //-------------------------------------------------------//
-
-    /**
-    Wrapper function to generate user questions for the THE quantifier when not using the BETWEEN keyword.
-    * @param interpretation DNF formula representing the interpretation.
-    * @param column (0 or 1) where in the utterance THE occured.
-    * @param existingObjects A dict of objects that exist in the world.
-    */
-    function throwClarificationError(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
-        throwGeneralClarificationError(interpretation, column, existingObjects, 0, 1);
-    }
-
-    /**
-     *Wrapper function to generate user questions for the THE quantifier when using the BETWEEN keyword.
-     * @param interpretation DNF formula representing the interpretation.
-     * @param column (0 or 1) where in the utterance THE occured.
-     * @param existingObjects A dict of objects that exist in the world.
-     */
-    function throwBetweenClarificationError(interpretation : DNFFormula, column : number, existingObjects : ObjectDict) : void {
-        throwGeneralClarificationError(interpretation, column, existingObjects, 0, 2);
-        throwGeneralClarificationError(interpretation, column, existingObjects, 1, 2);
-    }
-
-    /**
-    Generates a user question in case there is ambiguity originating in the usage of the THE quantifier. Whether that is actually the case is checked.
-    * @param interpretation DNF formula representing the interpretation.
-    * @param column (0 or 1) where in the utterance THE occured.
-    * @param existingObjects A dict of objects that exist in the world.
-    * @param startingPosition The conjunction to start the check with.
-    * @param stepSize How many conjunctions to step ahead in each step check.
-    */
-    function throwGeneralClarificationError(
-        interpretation : DNFFormula, column : number, existingObjects : ObjectDict, startingPosition : number, stepSize : number) {
-        var candidateSet = new collections.Set<string>();
-        var descriptionLookUp = new collections.Dictionary<string, string>();
-
-        console.log("started disambiguation.");
-        console.log(interpretation);
-
-        for (var i = startingPosition; i < interpretation.length; i+=stepSize) {
-            var firstLiteral : Literal;
-            var candidateID : string;
-            firstLiteral = interpretation[i][0];
-            candidateID = firstLiteral.args[column];
-            if (!candidateSet.contains(candidateID)) {
-                var descrString : string = "the ";
-                descrString += existingObjects[candidateID].definition.size + " ";
-                descrString += existingObjects[candidateID].definition.color + " ";
-                descrString += existingObjects[candidateID].definition.form;
-                if (descriptionLookUp.containsKey(descrString)) {
-                    throw new Error("The description " + descrString + " is ambiguous. Please specify.");
-                }
-                descriptionLookUp.setValue(descrString, candidateID);
-                candidateSet.add(candidateID);
-            }
-        }
-
-        console.log(candidateSet);
-
-        if (candidateSet.size() < 2) {
-            return;
-        }
-
-        var userQuestion: string = "[ambiguity]";
-        var firstTime : boolean = true;
-        for (var desc of descriptionLookUp.keys()){
-            if (!firstTime) {
-                userQuestion += "|"
-            }
-            userQuestion += desc;
-            firstTime = false;
-        }
-        throw new Error(userQuestion);
-    }
 }
