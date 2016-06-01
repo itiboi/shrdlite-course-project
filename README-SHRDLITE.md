@@ -42,8 +42,7 @@ We implemented the abortion of plan execution in case there is ambiguity origina
 The implementation only handles ambiguity from "the" quantifiers that appear in the top two levels of the nested command structure. In deeper levels it is treated in the same way as the "any" quantifier. Here are a few examples of how to test our implementation:
 
 * (small world) take the ball
-* (small world) take the table
-    * put it in the box
+* (small world) put the table in the box
 * (complex world) take the plank under a box
 
 ### Changes to the Grammar
