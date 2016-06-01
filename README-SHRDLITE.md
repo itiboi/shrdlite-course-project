@@ -36,8 +36,8 @@ Notice how it prints "Picking up the black ball" and omits the fact that the bal
 
 We implemented the abortion of plan execution in case there is ambiguity originating in the use of the "the" quantifier. The user is then presented with a question telling them how to specify their query. To implement it, we made changes in the following places:
 
-* In `Interpreter.ts`, in the `interpretCommmand()` function, we implemented a cascade of if-statements that test the length of the DNF formula that has been generated, depending on whether the "between" keyword is present or not. Could there be ambiguity, it calls the `askForClarification()` function.
-* Also in `Interpreter.ts`, we implemented the `askForClarification()` function - actually a group of functions to deal with the "between" keyword - to abort program execution and present the user with a question in case of ambiguity. Whether there actually is ambiguity is determined by checking the arguments of the literals in the DNF formula. Since the usage of the "between" keyword results in the production of one conjunction for every possible configuration it needs to be handled separately.
+* In `Interpreter.ts`, in the `interpretCommmand()` function, we implemented a cascade of if-statements that test the length of the DNF formula that has been generated, depending on whether the "between" keyword is present or not. Could there be ambiguity, it calls the `throwClarificationError()` function.
+* In `GenerateQuestions.ts`, we implemented the `throwClarificationError()` function - actually a group of functions to also deal with the "between" keyword - to abort program execution and present the user with a question in case of ambiguity. Whether there actually is ambiguity is determined by checking the arguments of the literals in the DNF formula. Since the usage of the "between" keyword results in the production of one conjunction for every possible configuration it needs to be handled separately.
 
 The implementation only handles ambiguity from "the" quantifiers that appear in the top two levels of the nested command structure. In deeper levels it is treated in the same way as the "any" quantifier. Here are a few examples of how to test our implementation:
 
@@ -54,12 +54,13 @@ We implemented an additional "between" keyword to the grammar. It is used to spe
 * Add special handling in `Interpreter.ts`
     * modify `interpretCommmand()`
     * added `between` as a new interpreation goal
-    * refactored and modified askForClarification() to handle the DNFs that result from usage of the keyword
     * modified `filterCandidate()`
+* Add special handling in `GenerateQuestions.ts`
+    * refactored and modified `throwClarificationError()` to handle the DNFs that result from usage of the keyword
 * Add support to the heuristic in `Planner.ts`
 * Add handling to Physics.ts in the form of isValidBetweenLocation()
 
-In order to test our implementation one can use "between" just as one would use any other locational relation keyword in shrdlite. It can also be used in combination with disambiguation for the "the" quantifier in both of its arguments. Here are a few examples:
+In order to test our implementation one can use "between" just as one would use any other locational relation keyword in shrdlite. It can also be used in combination with disambiguation for the "the" quantifier in both of its arguments as well as describing the goal location. Here are a few examples:
 
 * (small world) put the white ball between a box and a box
 * (complex world) take the box between a pyramid and the small ball
