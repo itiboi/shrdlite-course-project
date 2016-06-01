@@ -536,8 +536,14 @@ module Interpreter {
             var allConj: Conjunction =[];
             assignment.map((idx, pairIdx) => {
                 var allIdx1 = Math.floor(pairIdx / candidates[allCandidate2].length);
-                var allIdx2 = pairIdx % candidates[allCandidate1].length;
-                var getIdx  = (n: number) => ((notAllCandidate == n) ? idx : (notAllCandidate == (n+1)%3) ? allIdx1 : allIdx2);
+                var allIdx2 = pairIdx % candidates[allCandidate2].length;
+                var getIdx = (n: number) => {
+                    if (notAllCandidate == n) return idx;
+                    if (notAllCandidate == ((n + 1) % 3))
+                        return allIdx2;
+                    else
+                        return allIdx1;
+                };
                 var targetC = candidates[0][getIdx(0)];
                 var goal1   = candidates[1][getIdx(1)];
                 var goal2   = candidates[2][getIdx(2)];
@@ -568,8 +574,14 @@ module Interpreter {
             var allConj: Conjunction =[];
             assignment.map((pairIdx,idx) => {
                 var nonIdx1 = Math.floor(pairIdx / candidates[nonCandidate2].length);
-                var nonIdx2 = pairIdx % candidates[nonCandidate1].length;
-                var getIdx  = (n: number) => ((allCandidate == n) ? idx : (allCandidate == (n+1)%3) ? nonIdx1 : nonIdx2);
+                var nonIdx2 = pairIdx % candidates[nonCandidate2].length;
+                var getIdx = (n: number) => {
+                    if (allCandidate == n) return idx;
+                    if (allCandidate == ((n + 1) % 3))
+                        return nonIdx2;
+                    else
+                        return nonIdx1;
+                };
                 var targetC = candidates[0][getIdx(0)];
                 var goal1   = candidates[1][getIdx(1)];
                 var goal2   = candidates[2][getIdx(2)];
