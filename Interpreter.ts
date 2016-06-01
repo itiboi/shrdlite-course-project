@@ -387,11 +387,13 @@ module Interpreter {
                                 for(var goal of goalLocationCandidates.main) {
                                     var targetObj = existingObjects[target];
                                     var goalObj = existingObjects[goal];
-                                    // Since we are creating on large conjunction one infeasible destroys everything
-                                    if (!Physics.isValidGoalLocation(targetObj, relation, goalObj, undefined)) {
-                                        return [];
+                                    if(targetObj != goalObj) {
+                                        // Since we are creating on large conjunction one infeasible destroys everything
+                                        if (!Physics.isValidGoalLocation(targetObj, relation, goalObj, undefined)) {
+                                            return [];
+                                        }
+                                        allConj.push(createLiteral(relation, [target, goal]));
                                     }
-                                    allConj.push(createLiteral(relation, [target, goal]));
                                 }
                             }
 
@@ -595,10 +597,10 @@ module Interpreter {
             (conjunction)=> {
                 var arg1 = conjunction.map(
                     (literal,idx,obj) => literal.args[0]
-                );
+                ).filter((o) => o != "floor");
                 var arg2 = conjunction.map(
                     (literal,idx,obj) => literal.args[1]
-                );
+                ).filter((o) => o != "floor");
                 var checkForDuplicate = (arg : string[]) => (arg.map((object)=>(arg.filter((o)=> (o == object)).length > 1)).filter((o)=>(o)).length > 1);
                 return !(checkForDuplicate(arg1))
                 && !(checkForDuplicate(arg2));
