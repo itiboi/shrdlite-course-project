@@ -11,7 +11,7 @@ What follows is a description of how we understood some of the keywords to be im
 
 ### Heuristic
 
-To calculate the heuristic value we compute a heuristic value for each conjunctions contained in the interpretation of the goal. From these values the minimum is taken as the heuristic value of the world state since this conjunction "seems" to be the one which is easiest to satisfy.
+To calculate the heuristic value we compute a heuristic value for each conjunction contained in the interpretation of the goal. From these values the minimum is taken as the heuristic value of the world state since this conjunction "seems" to be the one which is easiest to satisfy.
 
 The heuristic value of an conjunction is obtained by calculating an `h` value for every literal in it and taking the maximum one. This `h` value is computed by summing a variant (depending on the relationship) of the following elements:
 * 1 for picking the main object
