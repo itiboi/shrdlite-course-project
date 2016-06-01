@@ -42,8 +42,7 @@ We implemented the abortion of plan execution in case there is ambiguity origina
 The implementation only handles ambiguity from "the" quantifiers that appear in the top two levels of the nested command structure. In deeper levels it is treated in the same way as the "any" quantifier. Here are a few examples of how to test our implementation:
 
 * (small world) take the ball
-* (small world) take the table
-    * put it in the box
+* (small world) put the table in the box
 * (complex world) take the plank under a box
 
 ### Changes to the Grammar
@@ -87,6 +86,11 @@ We added the support for the all quantifier. Our implementation handles it's occ
 In order to implement the all quantifier we changed the `Interpreter.ts` file:
 * In the `interpretCommand()` function we are checking whether the all quantifier is present in the main entity or the location entities (two in the case of between).
 * If an "all" is present we use `generateAllDNF()` to create a DNF formula. In this function we handle the different case depending on the command and the relation, then we generate conjunctions from all the valid (allowed by physics and logic) combinations of objects.
+
+Here are a few examples for testing:
+
+* (complex world) move all balls on the floor
+* (medium world) move all pyramids on a red object
 
 The all quantifier is also supported in the added "between" relationship, and even with more than one occurrence:
 
