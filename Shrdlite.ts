@@ -53,14 +53,14 @@ module Shrdlite {
         // Parsing
         world.printDebugInfo('Parsing utterance: "' + utterance + '"');
 
-        // Split utterance if user want to specify which parsing to use
+        // Split utterance if user want to specify which interpretation to use
         var splitResult = /(?:\((\d+)\) )?(.+)/g.exec(utterance);
         console.log(splitResult);
-        var chosenParse: number = NaN;
+        var chosenInterpretation: number = NaN;
         if (splitResult != null) {
-            chosenParse = parseInt(splitResult[1]);
+            chosenInterpretation = parseInt(splitResult[1]);
             utterance = splitResult[2];
-            console.log(chosenParse);
+            console.log(chosenInterpretation);
             console.log(utterance);
         }
 
@@ -76,16 +76,6 @@ module Shrdlite {
             return;
         }
 
-        // Remove other parse results if user chose one
-        if(!isNaN(chosenParse)) {
-            if (parses.length <= chosenParse) {
-                world.printError("The command entered has only " + parses.length + " possible parsings");
-                return;
-            }
-            console.log("Dropping other parses expect", chosenParse, "on users wish");
-            parses = [parses[chosenParse]];
-        }
-
         // Interpretation
         try {
             var interpretations : Interpreter.InterpretationResult[] = Interpreter.interpret(parses, world.currentState);
@@ -96,7 +86,20 @@ module Shrdlite {
 
             if (interpretations.length > 1) {
                 console.log("inside multiple interpretations",interpretations.length);
-                generateUserQuestion(interpretations,world);
+
+                // Remove other interpretations if user chose one
+                if (!isNaN(chosenInterpretation)) {
+                    if (interpretations.length <= chosenInterpretation) {
+                        world.printError("The command entered has only " + parses.length + " possible interpretations");
+                        return;
+                    }
+                    console.log("Dropping other interpretations except", chosenInterpretation, "on user's wish");
+                    interpretations = [interpretations[chosenInterpretation]];
+                }
+                // Otherwise ask
+                else {
+                    generateUserQuestion(interpretations, world);
+                }
             }
         }
         catch(err) {
