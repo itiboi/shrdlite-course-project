@@ -87,6 +87,11 @@ In order to implement the all quantifier we changed the `Interpreter.ts` file:
 * In the `interpretCommand()` function we are checking whether the all quantifier is present in the main entity or the location entities (two in the case of between).
 * If an "all" is present we use `generateAllDNF()` to create a DNF formula. In this function we handle the different case depending on the command and the relation, then we generate conjunctions from all the valid (allowed by physics and logic) combinations of objects.
 
+Here are a few examples for testing:
+
+* (complex world) move all balls on the floor
+* (medium world) move all pyramids on a red object
+
 The all quantifier is also supported in the added "between" relationship, and even with more than one occurrence:
 
 * (complex world) move all balls between the yellow pyramid and the blue table
