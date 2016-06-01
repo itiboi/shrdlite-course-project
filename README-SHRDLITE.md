@@ -53,7 +53,7 @@ We implemented an additional "between" keyword to the grammar. It is used to spe
 * Add an optional field for the second entity in a location in `Parser.ts`.
 * Add special handling in `Interpreter.ts`
     * modify `interpretCommmand()`
-    * added `between` as a new interpreation goal
+    * added `between` as a new interpretation goal
     * modified `filterCandidate()`
 * Add special handling in `GenerateQuestions.ts`
     * refactored and modified `throwClarificationError()` to handle the DNFs that result from usage of the keyword
